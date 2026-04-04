@@ -30,8 +30,12 @@ mdfs = "mdfs.__main__:main"
 [project.urls]
 Repository = "https://github.com/shimarulin/mdfs"
 
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-cov"]
+
 [tool.setuptools.packages.find]
 include = ["mdfs*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-v --tb=short"
