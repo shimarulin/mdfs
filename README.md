@@ -37,7 +37,7 @@ with special markers, so the LLM can read and produce them correctly.
 ### Option A: pip install (recommended)
 
 ```bash
-pip install git+https://github.com/YOUR_USER/mdfs.git
+pip install git+https://github.com/shimarulin/mdfs.git
 ```
 
 This gives you the `mdfs` command globally.
@@ -46,21 +46,21 @@ This gives you the `mdfs` command globally.
 
 ```bash
 cd your-project
-git submodule add https://github.com/YOUR_USER/mdfs.git tools/mdfs
+git submodule add https://github.com/shimarulin/mdfs.git tools/mdfs
 source tools/mdfs/setup.sh --install
 ```
 
 ### Option C: git clone + activate
 
 ```bash
-git clone https://github.com/YOUR_USER/mdfs.git ~/.local/share/mdfs
+git clone https://github.com/shimarulin/mdfs.git ~/.local/share/mdfs
 source ~/.local/share/mdfs/setup.sh --install
 ```
 
 ### Option D: just source it
 
 ```bash
-git clone https://github.com/YOUR_USER/mdfs.git /path/to/mdfs
+git clone https://github.com/shimarulin/mdfs.git /path/to/mdfs
 source /path/to/mdfs/setup.sh   # current session only
 ```
 
@@ -292,7 +292,7 @@ source /path/to/mdfs/completions/bash/mdfs
 ## Development
 
 ```bash
-git clone https://github.com/YOUR_USER/mdfs.git
+git clone https://github.com/shimarulin/mdfs.git
 cd mdfs
 python -m pytest tests/ -v
 ```
