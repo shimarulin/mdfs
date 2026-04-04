@@ -15,6 +15,7 @@ import argparse
 import datetime
 import platform
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -87,25 +88,37 @@ def _get_clipboard() -> str:
     system = platform.system()
 
     if system == "Darwin":
-        result = subprocess.run(
-            ["pbpaste"], capture_output=True, text=True, check=True,
-        )
-        return result.stdout
+        if shutil.which("pbpaste"):
+            result = subprocess.run(
+                ["pbpaste"], capture_output=True, text=True, check=True,
+            )
+            return result.stdout
+        print("Error: pbpaste not found on macOS.", file=sys.stderr)
+        sys.exit(1)
 
     if system == "Linux":
-        for cmd in (
-            ["xclip", "-selection", "clipboard", "-o"],
-            ["xsel", "--clipboard", "--output"],
-        ):
-            try:
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, check=True,
-                )
-                return result.stdout
-            except FileNotFoundError:
-                continue
+        # Try Wayland first (wl-paste), then X11 tools (xclip, xsel)
+        commands = [
+            ("wl-paste", ["wl-paste", "--no-newline"]),
+            ("xclip", ["xclip", "-selection", "clipboard", "-o"]),
+            ("xsel", ["xsel", "--clipboard", "--output"]),
+        ]
+
+        for name, cmd in commands:
+            if shutil.which(name):
+                try:
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=5,
+                    )
+                    if result.returncode == 0:
+                        return result.stdout
+                except subprocess.TimeoutExpired:
+                    continue
+                except Exception:
+                    continue
+
         print(
-            "Error: install xclip or xsel for clipboard support on Linux.",
+            "Error: install wl-paste (Wayland) or xclip/xsel (X11) for clipboard support.",
             file=sys.stderr,
         )
         sys.exit(1)
