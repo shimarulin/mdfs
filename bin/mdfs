@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# MDFS — Markdown FileSystem tools
+# Thin wrapper: finds the mdfs package relative to this script and runs it.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+
+export PYTHONPATH="${REPO_DIR}${PYTHONPATH:+:$PYTHONPATH}"
+
+exec python3 -m mdfs "$@"
