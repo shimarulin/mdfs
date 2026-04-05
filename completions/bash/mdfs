@@ -1,0 +1,52 @@
+# Bash completion for mdfs
+
+_mdfs() {
+    local cur prev words cword
+    _init_completion || return
+
+    local commands="init bundle paste extract log"
+
+    local cmd=""
+    local i
+    for ((i = 1; i < cword; i++)); do
+        case "${words[i]}" in
+            -d|--dir) ((i++)) ;;
+            init|bundle|paste|extract|log) cmd="${words[i]}"; break ;;
+        esac
+    done
+
+    if [[ -z "$cmd" ]]; then
+        if [[ "$cur" == -* ]]; then
+            COMPREPLY=($(compgen -W "-d --dir" -- "$cur"))
+        else
+            COMPREPLY=($(compgen -W "$commands" -- "$cur"))
+        fi
+        return
+    fi
+
+    case "$cmd" in
+        init) ;;
+        bundle)
+            case "$prev" in
+                -f|--files|-s|--system-prompt|-o|--output) _filedir; return ;;
+                -l|--label) return ;;
+            esac
+            COMPREPLY=($(compgen -W "-f --files -l --label -s --system-prompt -o --output" -- "$cur"))
+            ;;
+        paste)
+            case "$prev" in
+                -l|--label) return ;;
+            esac
+            COMPREPLY=($(compgen -W "-l --label -x --extract --dry-run" -- "$cur"))
+            ;;
+        extract)
+            case "$prev" in
+                -i|--input) _filedir; return ;;
+            esac
+            COMPREPLY=($(compgen -W "-i --input --dry-run" -- "$cur"))
+            ;;
+        log) ;;
+    esac
+}
+
+complete -F _mdfs mdfs
