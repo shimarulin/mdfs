@@ -1012,6 +1012,83 @@ upsert_block "$$HOME/.zshrc" "$$rc_block" "$$block_start" "$$block_end"
 
 ---
 
+## Installation with Package Managers (uv, pip, etc.)
+
+### Problem
+
+When MDFS is installed via package managers like `uv tool install`, the
+command is already available in the user's PATH. Running `setup.sh` in this
+case is unnecessary for system-wide availability, but may still be useful
+for:
+
+1. **Local development:** Working with the current checkout of the
+   repository instead of the installed version.
+2. **Shell completions:** Installing or updating completions for the
+   installed version.
+
+### Solution
+
+The `setup.sh` script now detects existing `mdfs` installations and provides
+guidance:
+
+```bash
+# If mdfs is already installed:
+$ source setup.sh
+ℹ️  mdfs is already installed: /Users/user/.local/bin/mdfs
+
+For local development with the current checkout:
+  export PATH="/path/to/mdfs/bin:$PATH"
+
+Or add to your shell config for persistent development setup.
+```
+
+### When to Use setup.sh with uv
+
+**Use `source setup.sh` if:**
+- You want to temporarily test the current checkout in the same shell session.
+- You are switching between the installed version and a local checkout.
+
+**Use `setup.sh --install` if:**
+- You want the current checkout to take priority over the installed version.
+- You are developing MDFS and need persistent PATH configuration.
+- You want to use shell completions from the checkout (not the installed
+  version).
+
+**Skip `setup.sh` if:**
+- You are happy with the installed version from `uv tool install`.
+- You do not need to work with the repository source code.
+
+### Example: Switching Between Versions
+
+```bash
+# Installed version (from uv tool install)
+$ which mdfs
+/Users/user/.local/bin/mdfs
+
+$ mdfs --version
+mdfs 0.1.0
+
+# Temporary use of checkout version in current session
+$ cd /path/to/mdfs/checkout
+$ export PATH="$(pwd)/bin:$PATH"
+
+$ which mdfs
+/path/to/mdfs/checkout/bin/mdfs
+
+$ mdfs --version
+mdfs 0.1.0+dev (from checkout)
+
+# Permanent switch to checkout version
+$ cd /path/to/mdfs/checkout
+$ ./setup.sh --install
+
+# New terminal window will use checkout version first
+$ which mdfs
+/path/to/mdfs/checkout/bin/mdfs
+```
+
+---
+
 ## FAQ
 
 ### Why not use dotfiles managers with symlinks?
