@@ -316,11 +316,33 @@ source /path/to/mdfs/completions/bash/mdfs
 
 ## Development
 
+### Setup
+
 ```bash
 git clone https://github.com/shimarulin/mdfs.git
 cd mdfs
-python -m pytest tests/ -v
 ```
+
+### Running tests
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+
+```bash
+# Install test dependencies and run all tests
+uv run --extra test pytest
+
+# Run tests with verbose output
+uv run --extra test pytest -v
+
+# Run tests with coverage report
+uv run --extra test pytest --cov=mdfs --cov-report=term-missing
+
+# Run specific test file
+uv run --extra test pytest tests/test_bundler.py
+```
+
+The `--extra test` flag installs optional test dependencies defined in
+`pyproject.toml` (pytest, pytest-cov).
 
 ## License
 
