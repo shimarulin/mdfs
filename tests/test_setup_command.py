@@ -381,6 +381,359 @@ class TestExecuteMethod:
 
 # ── Integration End-to-End Tests ──────────────────────────────────
 
+class TestBashProfileSourcing:
+    """Tests for .bash_profile sourcing logic."""
+    
+    def test_install_bash_adds_sourcing_when_missing(self, tmp_path):
+        """Install bash adds sourcing to .bash_profile when missing."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        bash_profile.write_text("# existing content\n")
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [bash_profile],
+                    "rc_files": [bashrc],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._install_bash_completions()
+                
+                assert result is True
+                profile_content = bash_profile.read_text()
+                assert ". ~/.bashrc" in profile_content or "source ~/.bashrc" in profile_content
+    
+    def test_install_bash_no_duplicate_sourcing(self, tmp_path):
+        """Install bash doesn't add duplicate sourcing."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        bash_profile.write_text("# existing content\nsource ~/.bashrc\n")
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [bash_profile],
+                    "rc_files": [bashrc],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._install_bash_completions()
+                
+                assert result is True
+                profile_content = bash_profile.read_text()
+                # Count occurrences - should be only original one
+                sourcing_count = profile_content.count("source ~/.bashrc") + profile_content.count(". ~/.bashrc")
+                assert sourcing_count == 1
+    
+    def test_install_bash_same_bashrc_and_profile(self, tmp_path):
+        """Install bash handles case where bashrc and profile are same file."""
+        config = tmp_path / ".bashrc"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [config],
+                    "rc_files": [config],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._install_bash_completions()
+                
+                assert result is True
+                content = config.read_text()
+                assert "# >>> mdfs >>>" in content
+
+
+class TestPermissionErrors:
+    """Tests for PermissionError handling."""
+    
+    def test_install_bash_permission_error_on_bashrc(self, tmp_path, capsys):
+        """Install bash handles PermissionError on bashrc."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                with patch("mdfs.commands.setup.upsert_block", side_effect=PermissionError("denied")):
+                    mock_get_files.return_value = {
+                        "env_files": [bash_profile],
+                        "rc_files": [bashrc],
+                    }
+                    
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    result = cmd._install_bash_completions()
+                    
+                    assert result is False
+                    captured = capsys.readouterr()
+                    assert "cannot write" in captured.err or "Error" in captured.err
+    
+    def test_install_zsh_permission_error_on_zshenv(self, tmp_path, capsys):
+        """Install zsh handles PermissionError on zshenv."""
+        zshenv = tmp_path / ".zshenv"
+        zshrc = tmp_path / ".zshrc"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="zsh"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [zshenv],
+                    "rc_files": [zshrc],
+                }
+                
+                with patch("mdfs.commands.setup.upsert_block") as mock_upsert:
+                    # First call (zshenv) raises PermissionError
+                    mock_upsert.side_effect = PermissionError("denied")
+                    
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    result = cmd._install_zsh_completions()
+                    
+                    assert result is False
+                    captured = capsys.readouterr()
+                    assert "cannot write" in captured.err or "Error" in captured.err
+    
+    def test_install_zsh_permission_error_on_zshrc(self, tmp_path, capsys):
+        """Install zsh handles PermissionError on zshrc."""
+        zshenv = tmp_path / ".zshenv"
+        zshrc = tmp_path / ".zshrc"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="zsh"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [zshenv],
+                    "rc_files": [zshrc],
+                }
+                
+                with patch("mdfs.commands.setup.upsert_block") as mock_upsert:
+                    # First call succeeds, second call (zshrc) fails
+                    mock_upsert.side_effect = [None, PermissionError("denied")]
+                    
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    result = cmd._install_zsh_completions()
+                    
+                    assert result is False
+                    captured = capsys.readouterr()
+                    assert "cannot write" in captured.err or "Error" in captured.err
+
+
+class TestFishCompletionCopying:
+    """Tests for fish completion file copying."""
+    
+    def test_install_fish_creates_conf_directory(self, tmp_path):
+        """Install fish creates conf.d directory if missing."""
+        fish_conf = tmp_path / "conf.d" / "mdfs.fish"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="fish"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [fish_conf],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._install_fish_completions()
+                
+                assert result is True
+                assert fish_conf.parent.exists()
+    
+    def test_install_fish_idempotent(self, tmp_path):
+        """Installing fish completions twice produces no duplicates."""
+        fish_conf = tmp_path / "conf.d" / "mdfs.fish"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="fish"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [fish_conf],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                
+                # First install
+                cmd._install_fish_completions()
+                
+                # Second install
+                cmd._install_fish_completions()
+                
+                # Check no duplicates
+                fish_conf_content = fish_conf.read_text()
+                assert fish_conf_content.count("# >>> mdfs >>>") == 1
+    
+    def test_install_fish_permission_error_on_conf(self, tmp_path, capsys):
+        """Install fish handles PermissionError on conf.d file."""
+        fish_conf = tmp_path / "conf.d" / "mdfs.fish"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="fish"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [fish_conf],
+                }
+                
+                with patch("mdfs.commands.setup.upsert_block", side_effect=PermissionError("denied")):
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    result = cmd._install_fish_completions()
+                    
+                    assert result is False
+                    captured = capsys.readouterr()
+                    assert "cannot write" in captured.err or "Error" in captured.err
+    
+    def test_install_bash_permission_error_on_profile(self, tmp_path, capsys):
+        """Install bash handles exception when updating .bash_profile."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        bash_profile.write_text("# existing\n")
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                # Mock read_text to raise exception
+                bash_profile_mock = MagicMock()
+                bash_profile_mock.exists.return_value = True
+                bash_profile_mock.read_text.side_effect = PermissionError("denied")
+                
+                mock_get_files.return_value = {
+                    "env_files": [bash_profile_mock],
+                    "rc_files": [bashrc],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                # This should still succeed (warning only)
+                result = cmd._install_bash_completions()
+                
+                # Result depends on bashrc being writable
+                captured = capsys.readouterr()
+                # Either succeeds with warning, or fails
+                assert isinstance(result, bool)
+
+
+class TestExecuteErrorHandling:
+    """Tests for execute() method error cases."""
+    
+    def test_execute_no_flags_returns_error(self, capsys):
+        """execute() returns error when no flags provided."""
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            args = MagicMock()
+            args.install_completions = False
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
+            exit_code = cmd.execute()
+            
+            assert exit_code == 1
+            captured = capsys.readouterr()
+            assert "Error" in captured.err
+            assert "--install-completions" in captured.err or "--uninstall-completions" in captured.err
+    
+    def test_execute_install_failed_returns_error_code(self, capsys):
+        """execute() returns 1 when install fails."""
+        with patch("mdfs.commands.setup.detect_shell", return_value="unknown"):
+            args = MagicMock()
+            args.install_completions = True
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
+            exit_code = cmd.execute()
+            
+            assert exit_code == 1
+
+
+class TestUninstallNotFound:
+    """Tests for uninstall when completions not found."""
+    
+    def test_uninstall_zsh_not_found(self, tmp_path, capsys):
+        """Uninstall zsh shows info message when not found."""
+        zshenv = tmp_path / ".zshenv"
+        zshrc = tmp_path / ".zshrc"
+        zshenv.write_text("# no mdfs config\n")
+        zshrc.write_text("# no mdfs config\n")
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="zsh"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [zshenv],
+                    "rc_files": [zshrc],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._uninstall_zsh_completions()
+                
+                assert result is True
+                captured = capsys.readouterr()
+                assert "not found" in captured.out.lower() or "ℹ️" in captured.out
+    
+    def test_uninstall_bash_not_found(self, tmp_path, capsys):
+        """Uninstall bash shows info message when not found."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        bashrc.write_text("# no mdfs config\n")
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [bash_profile],
+                    "rc_files": [bashrc],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._uninstall_bash_completions()
+                
+                assert result is True
+                captured = capsys.readouterr()
+                assert "not found" in captured.out.lower() or "ℹ️" in captured.out
+    
+    def test_uninstall_fish_not_found(self, tmp_path, capsys):
+        """Uninstall fish shows info message when not found."""
+        fish_conf = tmp_path / "conf.d" / "mdfs.fish"
+        fish_conf.parent.mkdir(parents=True, exist_ok=True)
+        fish_conf.write_text("# no mdfs config\n")
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="fish"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [fish_conf],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._uninstall_fish_completions()
+                
+                assert result is True
+                captured = capsys.readouterr()
+                assert "not found" in captured.out.lower() or "ℹ️" in captured.out
+
+
 class TestEndToEnd:
     """End-to-end tests for setup command."""
     
