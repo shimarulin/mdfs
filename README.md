@@ -50,6 +50,9 @@ This gives you the `mdfs` command globally.
 > pacman -S python-pipx, brew install pipx.
 > Or: python3 -m pip install --user pipx && pipx ensurepath.
 
+> ℹ️ Shell completions not installed automatically.
+> See [Shell completions](#shell-completions) section for setup.
+
 ### Option B: uv tool install
 
 uv is a fast Python package manager that also
@@ -59,6 +62,9 @@ manages CLI tools (like pipx, but faster).
 uv tool install git+https://github.com/shimarulin/mdfs.git
 ```
 
+> ℹ️ Shell completions not installed automatically.
+> See [Shell completions](#shell-completions) section for setup.
+
 ### Option C: pip install in a virtual environment
 
 ```bash
@@ -66,6 +72,9 @@ python3 -m venv ~/.local/share/mdfs/venv
 ~/.local/share/mdfs/venv/bin/pip install git+https://github.com/shimarulin/mdfs.git
 export PATH="$HOME/.local/share/mdfs/venv/bin:$PATH"  # add to your shell profile
 ```
+
+> ℹ️ Shell completions not installed automatically.
+> See [Shell completions](#shell-completions) section for setup.
 
 ### Option D: git submodule (for project-local tools)
 
@@ -75,12 +84,16 @@ git submodule add https://github.com/shimarulin/mdfs.git tools/mdfs
 source tools/mdfs/setup.sh --install
 ```
 
+> ✅ Shell completions installed automatically.
+
 ### Option E: git clone + activate
 
 ```bash
 git clone https://github.com/shimarulin/mdfs.git ~/.local/share/mdfs
 source ~/.local/share/mdfs/setup.sh --install
 ```
+
+> ✅ Shell completions installed automatically.
 
 ### Option F: just source it
 
@@ -297,21 +310,74 @@ your-project/
 📝 Your prompt
 ```
 
-## Shell completions
+## Shell Setup & Completions
 
-Completions are installed automatically by `setup.sh`.
+### What `setup.sh` Does
 
-**Manual setup (zsh):**
+The `setup.sh` script configures your shell to:
+1. Add MDFS bin directory to `$PATH` (so `mdfs` command is available)
+2. Configure shell completions (autocomplete for `mdfs` commands)
+
+**Why it's needed:** Without setup, you'd need to use the full path (`/path/to/mdfs/bin/mdfs`)
+or manually manage PATH and completions.
+
+### Installation Methods
+
+#### Current Session Only
 ```bash
-# Add to ~/.zshrc:
+source /path/to/mdfs/setup.sh
+```
+Activates MDFS in the current shell session. After closing the terminal, you'll need to run this again.
+
+#### Permanent Installation
+```bash
+/path/to/mdfs/setup.sh --install
+```
+Adds MDFS configuration to your shell config files. The script:
+- Detects your shell (zsh or bash)
+- Identifies the correct config file for your OS
+- Adds marked blocks (starting with `# >>> mdfs >>>`) that can be easily updated or removed
+
+**Where configuration is added:**
+
+| Shell | Login Shell (macOS/SSH)     | Non-Login Shell (new terminal tab) |
+|-------|-----------------------------|------------------------------------|
+| **zsh** | `~/.zshenv` + `~/.zshrc`   | `~/.zshenv` + `~/.zshrc`           |
+| **bash (macOS)** | `~/.bash_profile` (or `~/.profile`) | `~/.bash_profile` (sources `~/.bashrc`) |
+| **bash (Linux)** | `~/.bash_profile` (if exists) or `~/.bashrc` | `~/.bashrc` |
+
+**Why different files?**
+- **zsh:** Uses `~/.zshenv` for PATH (read by all shells) and `~/.zshrc` for interactive setup
+- **bash:** Has different files for login vs non-login shells; macOS always treats new terminal as login shell
+
+#### Removing Installation
+```bash
+/path/to/mdfs/setup.sh --uninstall
+```
+Removes MDFS configuration blocks from all shell config files.
+
+#### Help
+```bash
+/path/to/mdfs/setup.sh --help
+```
+
+### Manual Setup (if preferred)
+
+**For zsh:**
+```bash
+# Add to ~/.zshenv (for PATH — needed everywhere):
+export PATH="/path/to/mdfs/bin:$PATH"
 fpath=(/path/to/mdfs/completions/zsh $fpath)
+
+# Add to ~/.zshrc (for interactive shells):
 autoload -Uz compinit && compinit
 ```
 
-**Manual setup (bash):**
+**For bash:**
 ```bash
-# Add to ~/.bashrc:
-source /path/to/mdfs/completions/bash/mdfs
+# Add to ~/.bashrc (or ~/.bash_profile on macOS):
+export PATH="/path/to/mdfs/bin:$PATH"
+[[ -f /path/to/mdfs/completions/bash/mdfs ]] && source /path/to/mdfs/completions/bash/mdfs
 ```
 
 ## Development
