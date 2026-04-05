@@ -166,11 +166,33 @@ remove_block() {
 }
 
 # ---------------------------------------------------------------------------
+# check_existing_mdfs — check if mdfs is already installed elsewhere
+# Returns the path if found, or empty string if not found.
+# ---------------------------------------------------------------------------
+check_existing_mdfs() {
+    which mdfs 2>/dev/null || true
+}
+
+# ---------------------------------------------------------------------------
 # activate — set up PATH and completions for the current session only
 # ---------------------------------------------------------------------------
 activate() {
     local shell_type
     shell_type="$(detect_shell)"
+
+    local existing_mdfs
+    existing_mdfs="$(check_existing_mdfs)"
+
+    # If mdfs is already installed (e.g., via uv tool install), suggest command
+    if [ -n "$existing_mdfs" ]; then
+        echo "ℹ️  mdfs is already installed: $existing_mdfs"
+        echo ""
+        echo "For local development with the current checkout:"
+        echo "  export PATH=\"$BIN_DIR:\$PATH\""
+        echo ""
+        echo "Or add to your shell config for persistent development setup."
+        return 0
+    fi
 
     case ":$PATH:" in
         *":$BIN_DIR:"*) ;;
@@ -203,6 +225,26 @@ install_permanent() {
     shell_type="$(detect_shell)"
     local block_start="# >>> mdfs >>>"
     local block_end="# <<< mdfs <<<"
+
+    # Check if mdfs is already installed via uv or other means
+    local existing_mdfs
+    existing_mdfs="$(check_existing_mdfs)"
+    if [ -n "$existing_mdfs" ]; then
+        echo "⚠️  mdfs is already installed: $existing_mdfs"
+        echo ""
+        echo "For local development with the current checkout:"
+        echo "  export PATH=\"$BIN_DIR:\$PATH\""
+        echo ""
+        echo "To add to your shell config for persistent development setup,"
+        echo "continue with the installation below."
+        echo ""
+        read -rp "Continue with permanent installation? [y/N] " answer
+        case "$answer" in
+            [Yy]*) ;;
+            *)     echo "Installation cancelled."; exit 0 ;;
+        esac
+        echo ""
+    fi
 
     # If shell is unknown, check $SHELL as a fallback hint
     if [ "$shell_type" = "unknown" ]; then
