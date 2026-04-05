@@ -56,8 +56,8 @@ class TestBundleCommand(unittest.TestCase):
 
         # Check content
         content = contexts[0].read_text(encoding="utf-8")
-        self.assertIn("<!-- file: src/main.py -->", content)
-        self.assertIn("<!-- file: src/utils.py -->", content)
+        self.assertIn("<!-- file: \"src/main.py\" -->", content)
+        self.assertIn("<!-- file: \"src/utils.py\" -->", content)
         self.assertIn("def main():", content)
 
     def test_bundle_without_label(self):
@@ -120,7 +120,7 @@ class TestExtractCommand(unittest.TestCase):
         """Test that extract writes new files from markdown."""
         markdown_file = self.project_root / ".mdfs" / "responses" / "test.md"
         markdown_file.write_text(
-            "<!-- file: src/new.py -->\n"
+            "<!-- file: \"src/new.py\" -->\n"
             "```python\n"
             "y = 2\n"
             "```\n",
@@ -144,7 +144,7 @@ class TestExtractCommand(unittest.TestCase):
         """Test that extract applies patches to existing files."""
         markdown_file = self.project_root / ".mdfs" / "responses" / "patch.md"
         markdown_file.write_text(
-            "<!-- patch: src/main.py -->\n"
+            "<!-- patch: \"src/main.py\" -->\n"
             "```diff\n"
             "--- a/src/main.py\n"
             "+++ b/src/main.py\n"
@@ -172,7 +172,7 @@ class TestExtractCommand(unittest.TestCase):
         """Test that dry_run doesn't modify files."""
         markdown_file = self.project_root / ".mdfs" / "responses" / "test.md"
         markdown_file.write_text(
-            "<!-- file: src/dryrun.py -->\n"
+            "<!-- file: \"src/dryrun.py\" -->\n"
             "```python\n"
             "z = 3\n"
             "```\n",
@@ -319,12 +319,13 @@ class TestFullWorkflow(unittest.TestCase):
         response_content = (
             "# LLM Response\n"
             "Improved the code:\n"
-            "<!-- patch: src/main.py -->\n"
+            "<!-- patch: \"src/main.py\" -->\n"
             "```diff\n"
             "--- a/src/main.py\n"
             "+++ b/src/main.py\n"
             "@@ -1,2 +1,3 @@\n"
-            " def greet():\n     print('hello')\n"
+            " def greet():\n"
+            "     print('hello')\n"
             "+    print('world')\n"
             "```\n"
         )

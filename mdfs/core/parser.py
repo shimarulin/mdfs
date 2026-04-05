@@ -25,7 +25,7 @@ class Block:
     normalized_content: Optional[str] = None
 
 
-_MARKER_RE = re.compile(r"^<!--\s+(file|patch):\s+(.+?)\s+-->$")
+_MARKER_RE = re.compile(r"^<!--\s+(file|patch):\s+\"(.+?)\"\s+-->$")
 _FENCE_RE = re.compile(r"^(`{3,})(\S*)?\s*$")
 
 

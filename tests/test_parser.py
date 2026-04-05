@@ -10,7 +10,7 @@ class TestParse(unittest.TestCase):
         md = (
             "### `src/main.py`\n"
             "\n"
-            "<!-- file: src/main.py -->\n"
+            "<!-- file: \"src/main.py\" -->\n"
             "```python\n"
             "print('hello')\n"
             "```\n"
@@ -26,7 +26,7 @@ class TestParse(unittest.TestCase):
         md = (
             "### `src/main.py`\n"
             "\n"
-            "<!-- patch: src/main.py -->\n"
+            "<!-- patch: \"src/main.py\" -->\n"
             "```diff\n"
             "--- a/src/main.py\n"
             "+++ b/src/main.py\n"
@@ -43,7 +43,7 @@ class TestParse(unittest.TestCase):
         md = (
             "### `docs/README.md`\n"
             "\n"
-            "<!-- file: docs/README.md -->\n"
+            "<!-- file: \"docs/README.md\" -->\n"
             "````markdown\n"
             "# README\n"
             "\n"
@@ -58,12 +58,12 @@ class TestParse(unittest.TestCase):
 
     def test_multiple_blocks(self):
         md = (
-            "<!-- file: a.py -->\n"
+            "<!-- file: \"a.py\" -->\n"
             "```python\n"
             "a = 1\n"
             "```\n"
             "\n"
-            "<!-- file: b.py -->\n"
+            "<!-- file: \"b.py\" -->\n"
             "```python\n"
             "b = 2\n"
             "```\n"
@@ -76,7 +76,7 @@ class TestParse(unittest.TestCase):
         md = (
             "### `docs/README.md`\n"
             "\n"
-            "<!-- file: docs/README.md -->\n"
+            "<!-- file: \"docs/README.md\" -->\n"
             "````markdown\n"
             "# README\n"
             "\n"
@@ -95,7 +95,7 @@ class TestParse(unittest.TestCase):
         md = (
             "### `docs/README.md`\n"
             "\n"
-            "<!-- file: docs/README.md -->\n"
+            "<!-- file: \"docs/README.md\" -->\n"
             "```markdown\n"
             "# README\n"
             "\n"
@@ -112,7 +112,7 @@ class TestParse(unittest.TestCase):
     def test_fence_depth_normalization(self):
         """Test that fence depths are normalized correctly."""
         md = (
-            "<!-- file: test.md -->\n"
+            "<!-- file: \"test.md\" -->\n"
             "```markdown\n"
             "# Test\n"
             "\n"
@@ -133,7 +133,7 @@ class TestParse(unittest.TestCase):
     def test_no_fence_depth_error_for_simple_code(self):
         """Test that simple code blocks without nesting don't have errors."""
         md = (
-            "<!-- file: simple.py -->\n"
+            "<!-- file: \"simple.py\" -->\n"
             "```python\n"
             "print('hello')\n"
             "```\n"

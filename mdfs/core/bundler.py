@@ -69,7 +69,7 @@ def bundle(
 
         parts.append(f"{heading_prefix} `{rel_path}`")
         parts.append("")
-        parts.append(f"<!-- file: {rel_path} -->")
+        parts.append(f"<!-- file: \"{rel_path}\" -->")
         parts.append(f"{fence}{lang}")
         if content.endswith("\n"):
             content = content[:-1]

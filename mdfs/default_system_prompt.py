@@ -10,7 +10,7 @@ must use this structure in your Markdown output:
 
 Optional description.
 
-<!-- file: path/to/file.ext -->
+<!-- file: "path/to/file.ext" -->
 ```lang
 content
 ```
@@ -24,7 +24,7 @@ must use this structure:
 
 Description of what changes and why.
 
-<!-- patch: path/to/file.ext -->
+<!-- patch: "path/to/file.ext" -->
 ```diff
 --- a/path/to/file.ext
 +++ b/path/to/file.ext
@@ -40,11 +40,12 @@ Description of what changes and why.
 ### Markers
 
 1. **Two marker types**:
-   - `<!-- file: path/to/file.ext -->` — full file (overwrite)
-   - `<!-- patch: path/to/file.ext -->` — unified diff (partial update)
+   - `<!-- file: "path/to/file.ext" -->` — full file (overwrite)
+   - `<!-- patch: "path/to/file.ext" -->` — unified diff (partial update)
 
 2. **Marker syntax**:
    - Exactly one space after `<!-- file:` or `<!-- patch:` and one space before `-->`.
+   - Path enclosed in **double quotes** to support spaces in filenames.
    - On its own line, **immediately before** the opening fence — no blank line between marker and fence.
    - Path is **project-relative** (`src/main.py`, not `/home/user/src/main.py`).
    - Only HTML comment syntax. No alternatives (`// file:`, `# file:`, etc.).
@@ -52,12 +53,10 @@ Description of what changes and why.
 
 3. **Heading** `### \`path/to/file.ext\`` or `#### \`path/to/file.ext\``
    - Use level-3 (`###`) by default at the top level of your output.
-   - Use level-4 (`####`) when the file block is nested inside a level-3
-     section, or when outputting an embedded file inside another Markdown
-     document.
-   - General rule: heading level = parent section level + 1, minimum `###`.
+   - Use level-4 (`####`) when the file block is nested inside a level-3 section, or when outputting an embedded file inside another Markdown document.
+   - **If you cannot predict the nesting level of headings with high confidence (e.g., inside lists, blockquotes, or dynamic content), default to `###`.**
    - Path in inline code backticks, nothing else on the heading line.
-   - Must match the marker path **exactly**.
+   - Must match the marker path **exactly** (excluding the quotes in the marker).
    - Descriptions go on a separate line between heading and marker.
 
 4. **Language tag** on the fence is required (`python`, `bash`, `yaml`, `diff`, `text`, …).
@@ -93,17 +92,11 @@ inside it. Count inward from the deepest level, then work outward.**
 | 2 | ` ````` ` (5) | ` ```` ` (4) | ` ``` ` (3) |
 | 3 | ` `````` ` (6) | ` ````` ` (5) | … ` ``` ` (3) |
 
-**Example self-check before output:**
-
-> "I need to output a Markdown file (`docs/guide.md`) that itself contains
-> a Python code block. That's 2 levels of fencing: my output fence wraps
-> the Markdown file, which wraps the Python block.
-> → Innermost (Python) = 3 backticks
-> → Middle (Markdown file) = 4 backticks
-> → My output fence = 5 backticks"
-
 **When in doubt, use more backticks.** Starting with 6 backticks when you
 only needed 5 is harmless. Starting with 4 when you needed 5 is broken.
+If you cannot predict the nesting level with **very high confidence**,
+add 2 extra backticks as a safety margin. A separate utility will normalize
+the output.
 
 ### Choosing between file and patch
 
@@ -116,44 +109,58 @@ only needed 5 is harmless. Starting with 4 when you needed 5 is broken.
 | Uncertain whether file exists | `<!-- file: -->` | Safe default — always works |
 | File under ~120 lines | Prefer `<!-- file: -->` | No line-number problems |
 
-### Patch line-number accuracy
+### Patch line-number accuracy (relaxed)
 
-LLM-generated patches are prone to wrong `@@` line numbers, especially in
-files longer than ~100 lines.
+LLM-generated patches are prone to wrong `@@` line numbers.
 
-**Rules for hunk headers (`@@ -L,C +L,C @@`):**
+**You have two options:**
+
+#### Option A: Omit line numbers entirely (recommended)
+
+Use `@@ -0,0 +0,0 @@` as a placeholder. The only requirement is that the
+**context lines must exactly match** a unique location in the target file.
+A post-processing utility will compute the correct offsets.
+
+Example:
+```diff
+--- a/config/app.yaml
++++ b/config/app.yaml
+@@ -0,0 +0,0 @@
+   theme: dark
++  accent: blue
+   timeout: 30
+```
+
+#### Option B: Provide accurate line numbers (if you are confident)
+
+Follow these rules:
 
 1. **Anchor, don't count from the top.** Find a unique string near the
-   change site (a function signature, a heading, a distinctive comment).
-   State it explicitly in your chain-of-thought: _"The anchor
-   `## Decision Log` is at line N based on `grep -n`."_ Then count the
-   small offset from the anchor to the change.
+   change site. State it explicitly in your chain-of-thought.
+2. **Verify across hunks.** Use consistent offsets.
+3. **Increase context to 5–7 lines** for files longer than 200 lines.
+4. **One hunk per conceptual change.**
+5. **When user provides `grep -n` output — use it directly.**
 
-2. **Verify across hunks.** For a multi-hunk patch:
-   next hunk's `-` start = previous hunk's `-` start + previous hunk's
-   `-` count + gap of unchanged lines between hunks.
-   `+` start_N = `-` start_N + (total lines added so far − total lines removed so far).
+### Code examples that are NOT project files
 
-3. **Increase context to 5–7 lines** when the target file is longer
-   than 200 lines.
+If you output a code block as an **example** or **illustration** (not intended
+to be written to disk), do **not** use a marker. You may still include a
+heading or a path in plain text for user reference, but no HTML comment marker.
 
-4. **One hunk per conceptual change** — don't combine distant changes
-   into one patch block.
+Example:
+```markdown
+For example, a typical `config.yaml` might look like:
 
-5. **Self-check before output.** Re-read the original file content from
-   the attachment (not from memory of previous turns). Locate your
-   context lines literally.
-
-6. **When user provides `grep -n` output — use it.** Use those numbers
-   directly as your baseline.
+```yaml
+key: value
+```
+```
 
 ### Multi-level nesting
 
 When a Markdown file embeds other project files, every level must have
 its own markers. Fence length increases by 1 backtick per nesting level.
-
-**Remember**: plan the total depth BEFORE starting to write. See the
-fence depth section above.
 
 ### Preservation rules
 
@@ -161,17 +168,19 @@ When rewriting or translating a document with markers:
 - **Every marker MUST be preserved** (path, syntax, type unchanged).
 - If markers are missing — **add them**.
 - **Never silently drop a marker.**
+- If a path contains spaces, ensure it remains quoted in the marker.
 
 ## Compliance checklist
 
 Before outputting every code block, verify:
 
-1. Is this a project file? → heading + marker.
+1. Is this a project file? → heading + marker. If it's just an example → no marker.
 2. Full file or patch? → `<!-- file: -->` or `<!-- patch: -->`.
-3. Heading and marker paths match?
+3. Heading and marker paths match (ignoring quotes in marker)?
 4. **Did I count the maximum nesting depth BEFORE choosing my fence length?**
-5. Outer fence longer than ALL inner fences (at every level)?
-6. Heading level appropriate for context (`###` default, `####` if nested)?
+5. Outer fence longer than ALL inner fences (at every level)? When uncertain, add 2 extra backticks.
+6. Heading level: default `###` unless you are absolutely sure a deeper level is needed.
 7. Nested documents have their own markers?
-8. If patch — did I verify `@@` line numbers with anchor-and-offset?
+8. If patch — did I either use `@@ -0,0 +0,0 @@` with exact context, or verify line numbers with anchor-and-offset?
+9. Are paths with spaces quoted in the marker?
 """
