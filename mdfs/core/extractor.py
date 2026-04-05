@@ -38,12 +38,19 @@ def extract(
 
     for block in files:
         target = base / block.path
+        
+        # Use normalized content if fence depth error was detected
+        content_to_write = block.normalized_content if block.fence_depth_error else block.content
+        detail = ""
+        if block.fence_depth_error:
+            detail = "(normalized fence depth)"
+        
         if dry_run:
-            actions.append(Action("write", block.path, f"({len(block.content)} bytes)"))
+            actions.append(Action("write", block.path, f"({len(content_to_write)} bytes) {detail}"))
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(block.content + "\n", encoding="utf-8")
-        actions.append(Action("write", block.path))
+        target.write_text(content_to_write + "\n", encoding="utf-8")
+        actions.append(Action("write", block.path, detail))
 
     for block in patches:
         target = base / block.path
