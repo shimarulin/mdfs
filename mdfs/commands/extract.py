@@ -6,7 +6,7 @@ import sys
 from argparse import Namespace
 from pathlib import Path
 
-from ..extractor import extract as do_extract
+from ..core.extractor import extract as do_extract
 from ..utils import print_actions
 from .base import BaseCommand
 

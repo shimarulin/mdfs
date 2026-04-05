@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mdfs.bundler import bundle
+from mdfs.core.bundler import bundle
 
 
 class TestBundle(unittest.TestCase):

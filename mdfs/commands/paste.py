@@ -5,8 +5,8 @@ from __future__ import annotations
 import sys
 from argparse import Namespace
 
-from ..extractor import extract as do_extract
-from ..parser import parse, split_files_and_patches
+from ..core.extractor import extract as do_extract
+from ..core.parser import parse, split_files_and_patches
 from ..utils import get_clipboard, make_filename, print_actions, responses_dir
 from .base import BaseCommand
 

@@ -1,7 +1,7 @@
 """Tests for MDFS fuzzy patcher."""
 
 import unittest
-from mdfs.patcher import apply_patch, parse_hunks, PatchError
+from mdfs.core.patcher import apply_patch, parse_hunks, PatchError
 
 
 class TestParseHunks(unittest.TestCase):

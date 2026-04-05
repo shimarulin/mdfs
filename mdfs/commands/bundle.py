@@ -5,7 +5,7 @@ from __future__ import annotations
 from argparse import Namespace
 from pathlib import Path
 
-from ..bundler import bundle
+from ..core.bundler import bundle
 from ..utils import contexts_dir, make_filename, rules_dir
 from .base import BaseCommand
 

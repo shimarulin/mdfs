@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mdfs.extractor import extract
+from mdfs.core.extractor import extract
 
 
 class TestExtract(unittest.TestCase):
