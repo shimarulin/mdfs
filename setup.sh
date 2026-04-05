@@ -250,8 +250,94 @@ install_bash_linux() {
     fi
 }
 
+uninstall_permanent() {
+    local shell_type
+    shell_type="$(detect_shell)"
+    local block_start="# >>> mdfs >>>"
+    local block_end="# <<< mdfs <<<"
+
+    echo ""
+    echo "═══ Uninstalling MDFS ═══"
+    echo ""
+
+    case "$shell_type" in
+        zsh)
+            uninstall_zsh "$block_start" "$block_end"
+            ;;
+        bash)
+            uninstall_bash "$block_start" "$block_end"
+            ;;
+        *)
+            echo "Error: unsupported shell" >&2
+            exit 1
+            ;;
+    esac
+}
+
+uninstall_zsh() {
+    local block_start="$1"
+    local block_end="$2"
+    local env_file="$HOME/.zshenv"
+    local rc_file="$HOME/.zshrc"
+    local removed=0
+
+    for file in "$env_file" "$rc_file"; do
+        if [[ -f "$file" ]] && grep -qF "$block_start" "$file"; then
+            sed -i.bak "/$block_start/,/$block_end/d" "$file"
+            rm -f "${file}.bak"
+            echo "✅ Removed from $file"
+            ((removed++))
+        fi
+    done
+
+    if [[ $removed -eq 0 ]]; then
+        echo "ℹ️  MDFS configuration not found in zsh config files"
+    else
+        echo ""
+        echo "📝 Next step: Restart your shell"
+        echo "   source $env_file"
+    fi
+}
+
+uninstall_bash() {
+    local block_start="$1"
+    local block_end="$2"
+    local removed=0
+
+    for file in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile" "$HOME/.bashrc"; do
+        if [[ -f "$file" ]] && grep -qF "$block_start" "$file"; then
+            sed -i.bak "/$block_start/,/$block_end/d" "$file"
+            rm -f "${file}.bak"
+            echo "✅ Removed from $file"
+            ((removed++))
+        fi
+    done
+
+    if [[ $removed -eq 0 ]]; then
+        echo "ℹ️  MDFS configuration not found in bash config files"
+    else
+        echo ""
+        echo "📝 Next step: Restart your shell"
+        echo "   exec \$SHELL -l"
+    fi
+}
+
+usage() {
+    echo "MDFS setup — adds bin/ to PATH and configures shell completions"
+    echo ""
+    echo "Usage:"
+    echo "  source /path/to/mdfs/setup.sh            # current session"
+    echo "  /path/to/mdfs/setup.sh --install         # permanent installation"
+    echo "  /path/to/mdfs/setup.sh --uninstall       # remove from config"
+    echo "  /path/to/mdfs/setup.sh --help            # show this help"
+}
+
 if [[ "${1:-}" == "--install" ]]; then
     install_permanent
+elif [[ "${1:-}" == "--uninstall" ]]; then
+    uninstall_permanent
+elif [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+    usage
 else
     activate
 fi
