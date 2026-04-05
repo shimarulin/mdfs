@@ -27,15 +27,32 @@ from .extractor import extract
 # ── Version ────────────────────────────────────────────────────────
 
 def _get_version() -> str:
-    """Read version from pyproject.toml."""
+    """Read version from package metadata or pyproject.toml.
+    
+    Tries multiple sources in order:
+    1. importlib.metadata (for installed packages)
+    2. pyproject.toml (for development/editable installs)
+    
+    Returns "unknown" if version cannot be determined.
+    """
+    # Try importlib.metadata first (works for installed packages)
     try:
-        toml_path = Path(__file__).parent.parent / "pyproject.toml"
-        content = toml_path.read_text(encoding="utf-8")
-        match = re.search(r'version\s*=\s*"([^"]+)"', content)
-        if match:
-            return match.group(1)
+        from importlib.metadata import version
+        return version("mdfs")
     except Exception:
         pass
+
+    # Fallback: read pyproject.toml (for development)
+    try:
+        toml_path = Path(__file__).parent.parent / "pyproject.toml"
+        if toml_path.exists():
+            content = toml_path.read_text(encoding="utf-8")
+            match = re.search(r'version\s*=\s*"([^"]+)"', content)
+            if match:
+                return match.group(1)
+    except Exception:
+        pass
+
     return "unknown"
 
 
