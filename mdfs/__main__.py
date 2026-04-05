@@ -362,12 +362,12 @@ def main() -> None:
     p_setup = sub.add_parser("setup", help="Install/uninstall shell completions")
     p_setup_group = p_setup.add_mutually_exclusive_group(required=False)
     p_setup_group.add_argument(
-        "--install-completions",
+        "-i", "--install-completions",
         action="store_true",
         help="Install shell completions for current shell",
     )
     p_setup_group.add_argument(
-        "--uninstall-completions",
+        "-u", "--uninstall-completions",
         action="store_true",
         help="Uninstall shell completions",
     )

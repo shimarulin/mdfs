@@ -320,8 +320,8 @@ For git clone installations (Option E), the `setup.sh` script:
 
 **For other installation methods** (uv, pipx), use `mdfs setup` directly:
 ```bash
-mdfs setup --install-completions      # install completions
-mdfs setup --uninstall-completions    # remove completions
+mdfs setup -i      # install completions
+mdfs setup -u      # uninstall completions
 ```
 
 ### Usage
@@ -337,13 +337,13 @@ Activates MDFS in the current shell session. After closing the terminal, you'll 
 #### Permanent Installation
 ```bash
 /path/to/mdfs/setup.sh --install
-# Delegates to: mdfs setup --install-completions
+# Delegates to: mdfs setup -i
 ```
 
 #### Removing Installation
 ```bash
 /path/to/mdfs/setup.sh --uninstall
-# Delegates to: mdfs setup --uninstall-completions
+# Delegates to: mdfs setup -u
 ```
 
 #### Help
@@ -353,7 +353,7 @@ Activates MDFS in the current shell session. After closing the terminal, you'll 
 
 ### What Gets Installed
 
-When you run `mdfs setup --install-completions`, it:
+When you run `mdfs setup -i`, it:
 - Detects your shell (zsh, bash, or fish)
 - Adds MDFS `bin/` to `$PATH` in your shell config files
 - Configures shell completions (fpath for zsh, source for bash, fish_add_path for fish)

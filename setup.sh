@@ -22,11 +22,11 @@ export PATH="$BIN_DIR:$PATH"
 case "${1:-}" in
     --install)
         # Delegate to mdfs setup for permanent completions installation
-        mdfs setup --install-completions
+        mdfs setup -i
         ;;
     --uninstall)
         # Delegate to mdfs setup for completions removal
-        mdfs setup --uninstall-completions
+        mdfs setup -u
         ;;
     --help|-h)
         echo "MDFS setup — shell completions installation"
