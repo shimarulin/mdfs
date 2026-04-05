@@ -25,19 +25,20 @@ class PasteCommand(BaseCommand):
         """
         content = get_clipboard()
         
-        filename = make_filename(self.args.label)
-        out_path = responses_dir(self.root) / filename
-
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(content, encoding="utf-8")
-
-        # Check if clipboard is empty
+        # Check if clipboard is empty before processing
         if not content.strip():
             print("Error: clipboard is empty.", file=sys.stderr)
             # Return 1 if not extracting
             if not self.args.extract:
                 return 1
+            # If extracting with empty clipboard, return 0
             return 0
+        
+        filename = make_filename(self.args.label)
+        out_path = responses_dir(self.root) / filename
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(content, encoding="utf-8")
 
         blocks = parse(content)
         files, patches = split_files_and_patches(blocks)

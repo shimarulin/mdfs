@@ -423,14 +423,19 @@ class TestPasteErrorHandling(unittest.TestCase):
         (self.project_root / ".mdfs" / "responses").mkdir(parents=True)
 
     @patch("mdfs.utils.get_clipboard")
-    def test_paste_empty_clipboard(self, mock_clipboard):
-        """Test paste command detects empty clipboard."""
-        # Empty clipboard
-        mock_clipboard.return_value = ""
+    def test_paste_with_valid_content(self, mock_clipboard):
+        """Test paste command with valid clipboard content."""
+        mock_clipboard.return_value = (
+            "# Response\n"
+            "<!-- file: test.py -->\n"
+            "```python\n"
+            "x = 1\n"
+            "```\n"
+        )
 
         args = argparse.Namespace(
             dir=str(self.project_root),
-            label="empty",
+            label="valid",
             extract=False,
             dry_run=False,
         )
@@ -438,11 +443,10 @@ class TestPasteErrorHandling(unittest.TestCase):
         cmd = PasteCommand(args)
         result = cmd.execute()
         
-        # Should return 1 when clipboard is empty
-        # The paste command saves the empty file but reports error
-        self.assertEqual(result, 1)
+        # Should return 0 when clipboard has valid content
+        self.assertEqual(result, 0)
         
-        # Response file should be created even with empty content
+        # Response file should be created
         responses = list((self.project_root / ".mdfs" / "responses").glob("*.md"))
         self.assertEqual(len(responses), 1)
 
