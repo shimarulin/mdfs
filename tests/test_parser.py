@@ -1,7 +1,7 @@
 """Tests for MDFS parser."""
 
 import unittest
-from mdfs.parser import parse, BlockType
+from mdfs.core.parser import parse, BlockType
 
 
 class TestParse(unittest.TestCase):

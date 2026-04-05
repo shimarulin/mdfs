@@ -1,9 +1,9 @@
 """MDFS — Markdown FileSystem: bundle, extract, and patch project files."""
 
-from .bundler import bundle
-from .extractor import extract
-from .parser import Block, BlockType, parse
-from .patcher import PatchError, apply_patch
+from .core.bundler import bundle
+from .core.extractor import extract
+from .core.parser import Block, BlockType, parse
+from .core.patcher import PatchError, apply_patch
 
 __all__ = [
     "Block",

@@ -81,19 +81,19 @@ export PATH="$HOME/.local/share/mdfs/venv/bin:$PATH"  # add to your shell profil
 ```bash
 cd your-project
 git submodule add https://github.com/shimarulin/mdfs.git tools/mdfs
-source tools/mdfs/setup.sh --install
+tools/mdfs/setup.sh --install
 ```
 
-> ✅ Shell completions installed automatically.
+> ✅ Shell completions installed via `mdfs setup`.
 
 ### Option E: git clone + activate
 
 ```bash
 git clone https://github.com/shimarulin/mdfs.git ~/.local/share/mdfs
-source ~/.local/share/mdfs/setup.sh --install
+~/.local/share/mdfs/setup.sh --install
 ```
 
-> ✅ Shell completions installed automatically.
+> ✅ Shell completions installed via `mdfs setup`.
 
 ### Option F: just source it
 
@@ -312,54 +312,67 @@ your-project/
 
 ## Shell Setup & Completions
 
-### What `setup.sh` Does
+### What `setup.sh` Does (git clone installations only)
 
-The `setup.sh` script configures your shell to:
-1. Add MDFS bin directory to `$PATH` (so `mdfs` command is available)
-2. Configure shell completions (autocomplete for `mdfs` commands)
+For git clone installations (Option E), the `setup.sh` script:
+1. Adds MDFS `bin/` to `$PATH` (for current session)
+2. Delegates to `mdfs setup --install-completions` (for permanent setup)
 
-**Why it's needed:** Without setup, you'd need to use the full path (`/path/to/mdfs/bin/mdfs`)
-or manually manage PATH and completions.
+**For other installation methods** (uv, pipx), use `mdfs setup` directly:
+```bash
+mdfs setup -i      # install completions
+mdfs setup -u      # uninstall completions
+```
 
-### Installation Methods
+### Usage
 
 #### Current Session Only
 ```bash
 source /path/to/mdfs/setup.sh
+# or for git clone in ~/.local/share/mdfs:
+source ~/.local/share/mdfs/setup.sh
 ```
 Activates MDFS in the current shell session. After closing the terminal, you'll need to run this again.
 
 #### Permanent Installation
 ```bash
 /path/to/mdfs/setup.sh --install
+# Delegates to: mdfs setup -i
 ```
-Adds MDFS configuration to your shell config files. The script:
-- Detects your shell (zsh or bash)
-- Identifies the correct config file for your OS
-- Adds marked blocks (starting with `# >>> mdfs >>>`) that can be easily updated or removed
-
-**Where configuration is added:**
-
-| Shell | Login Shell (macOS/SSH)     | Non-Login Shell (new terminal tab) |
-|-------|-----------------------------|------------------------------------|
-| **zsh** | `~/.zshenv` + `~/.zshrc`   | `~/.zshenv` + `~/.zshrc`           |
-| **bash (macOS)** | `~/.bash_profile` (or `~/.profile`) | `~/.bash_profile` (sources `~/.bashrc`) |
-| **bash (Linux)** | `~/.bash_profile` (if exists) or `~/.bashrc` | `~/.bashrc` |
-
-**Why different files?**
-- **zsh:** Uses `~/.zshenv` for PATH (read by all shells) and `~/.zshrc` for interactive setup
-- **bash:** Has different files for login vs non-login shells; macOS always treats new terminal as login shell
 
 #### Removing Installation
 ```bash
 /path/to/mdfs/setup.sh --uninstall
+# Delegates to: mdfs setup -u
 ```
-Removes MDFS configuration blocks from all shell config files.
 
 #### Help
 ```bash
 /path/to/mdfs/setup.sh --help
 ```
+
+### What Gets Installed
+
+When you run `mdfs setup -i`, it:
+- Detects your shell (zsh, bash, or fish)
+- Adds MDFS `bin/` to `$PATH` in your shell config files
+- Configures shell completions (fpath for zsh, source for bash, fish_add_path for fish)
+- Creates backups before modifying config files
+- Is fully idempotent (safe to run multiple times)
+
+**Where configuration is added:**
+
+| Shell | Files |
+|-------|-------|
+| **zsh** | `~/.zshenv` (PATH), `~/.zshrc` (completions) |
+| **bash (macOS)** | `~/.bash_profile` (PATH + completions) |
+| **bash (Linux)** | `~/.bashrc` (PATH + completions) |
+| **fish** | `~/.config/fish/conf.d/mdfs.fish` |
+
+**Why different files?**
+- **zsh:** Uses `~/.zshenv` for PATH (read by all shells) and `~/.zshrc` for interactive setup
+- **bash:** Has different files for login vs non-login shells; macOS always treats new terminal as login shell
+- **fish:** Uses conf.d for automatic initialization
 
 ### Manual Setup (if preferred)
 
@@ -378,6 +391,12 @@ autoload -Uz compinit && compinit
 # Add to ~/.bashrc (or ~/.bash_profile on macOS):
 export PATH="/path/to/mdfs/bin:$PATH"
 [[ -f /path/to/mdfs/completions/bash/mdfs ]] && source /path/to/mdfs/completions/bash/mdfs
+```
+
+**For fish:**
+```bash
+# Add to ~/.config/fish/conf.d/mdfs.fish:
+fish_add_path /path/to/mdfs/bin
 ```
 
 ## Development
