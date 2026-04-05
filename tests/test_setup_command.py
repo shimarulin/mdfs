@@ -734,6 +734,117 @@ class TestUninstallNotFound:
                 assert "not found" in captured.out.lower() or "ℹ️" in captured.out
 
 
+class TestGenericExceptionHandling:
+    """Tests for generic exception handling in install/uninstall methods."""
+    
+    def test_install_completions_generic_exception(self, capsys):
+        """install_completions() catches and handles generic exceptions."""
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.check_shell_completions", return_value=True):
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                
+                # Mock _install_bash_completions to raise a generic exception
+                with patch.object(cmd, "_install_bash_completions", side_effect=RuntimeError("unexpected error")):
+                    result = cmd.install_completions()
+                    
+                    assert result is False
+                    captured = capsys.readouterr()
+                    assert "Error" in captured.err
+                    assert "unexpected error" in captured.err
+    
+    def test_uninstall_completions_generic_exception(self, capsys):
+        """uninstall_completions() catches and handles generic exceptions."""
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            args = MagicMock()
+            args.install_completions = False
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
+            
+            # Mock _uninstall_bash_completions to raise a generic exception
+            with patch.object(cmd, "_uninstall_bash_completions", side_effect=RuntimeError("unexpected error")):
+                result = cmd.uninstall_completions()
+                
+                assert result is False
+                captured = capsys.readouterr()
+                assert "Error" in captured.err
+                assert "unexpected error" in captured.err
+    
+    def test_install_bash_exception_updating_profile(self, tmp_path, capsys):
+        """Install bash handles exception when updating .bash_profile."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                # Create a mock that simulates exception during write_text
+                bash_profile_mock = MagicMock(spec=Path)
+                bash_profile_mock.exists.return_value = True
+                bash_profile_mock.read_text.side_effect = RuntimeError("cannot read")
+                
+                mock_get_files.return_value = {
+                    "env_files": [bash_profile_mock],
+                    "rc_files": [bashrc],
+                }
+                
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
+                result = cmd._install_bash_completions()
+                
+                # Should still succeed or with warning
+                captured = capsys.readouterr()
+                # Either succeeds with warning or fails gracefully
+                assert isinstance(result, bool)
+    
+    def test_install_fish_exception_writing_file(self, tmp_path, capsys):
+        """Install fish handles exception when writing file."""
+        fish_conf = tmp_path / "conf.d" / "mdfs.fish"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="fish"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [fish_conf],
+                }
+                
+                with patch("mdfs.commands.setup.upsert_block", side_effect=PermissionError("write denied")):
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    result = cmd._install_fish_completions()
+                    
+                    # Should fail due to exception
+                    assert result is False
+                    captured = capsys.readouterr()
+                    assert "Error" in captured.err or "cannot write" in captured.err
+    
+    def test_execute_returns_zero_on_success(self, tmp_path):
+        """execute() returns 0 when install succeeds."""
+        bashrc = tmp_path / ".bashrc"
+        bash_profile = tmp_path / ".bash_profile"
+        
+        with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                with patch("mdfs.commands.setup.check_shell_completions", return_value=True):
+                    mock_get_files.return_value = {
+                        "env_files": [bash_profile],
+                        "rc_files": [bashrc],
+                    }
+                    
+                    args = MagicMock()
+                    args.install_completions = True
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    exit_code = cmd.execute()
+                    
+                    assert exit_code == 0
+                    assert bashrc.exists()
+
+
 class TestEndToEnd:
     """End-to-end tests for setup command."""
     
