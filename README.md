@@ -34,15 +34,40 @@ with special markers, so the LLM can read and produce them correctly.
 
 ## Installation
 
-### Option A: pip install (recommended)
+### Option A: pipx install (recommended)
 
-```bash
-pip install git+https://github.com/shimarulin/mdfs.git
+[pipx](https://pipx.pypa.io/) installs CLI tools into isolated environments,
+fully compatible with PEP 668 ("externally managed" Python).
+ 
+ ```bash
+pipx install git+https://github.com/shimarulin/mdfs.git
 ```
 
 This gives you the `mdfs` command globally.
 
-### Option B: git submodule (for project-local tools)
+> Don't have pipx?
+> Most distros package it: apt install pipx, dnf install pipx,
+> pacman -S python-pipx, brew install pipx.
+> Or: python3 -m pip install --user pipx && pipx ensurepath.
+
+### Option B: uv tool install
+
+uv is a fast Python package manager that also
+manages CLI tools (like pipx, but faster).
+
+```bash
+uv tool install git+https://github.com/shimarulin/mdfs.git
+```
+
+### Option C: pip install in a virtual environment
+
+```bash
+python3 -m venv ~/.local/share/mdfs/venv
+~/.local/share/mdfs/venv/bin/pip install git+https://github.com/shimarulin/mdfs.git
+export PATH="$HOME/.local/share/mdfs/venv/bin:$PATH"  # add to your shell profile
+```
+
+### Option D: git submodule (for project-local tools)
 
 ```bash
 cd your-project
@@ -50,14 +75,14 @@ git submodule add https://github.com/shimarulin/mdfs.git tools/mdfs
 source tools/mdfs/setup.sh --install
 ```
 
-### Option C: git clone + activate
+### Option E: git clone + activate
 
 ```bash
 git clone https://github.com/shimarulin/mdfs.git ~/.local/share/mdfs
 source ~/.local/share/mdfs/setup.sh --install
 ```
 
-### Option D: just source it
+### Option F: just source it
 
 ```bash
 git clone https://github.com/shimarulin/mdfs.git /path/to/mdfs
