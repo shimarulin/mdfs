@@ -45,6 +45,7 @@ class TestBundleCommand(unittest.TestCase):
             label="initial setup",
             system_prompt=None,
             output=None,
+            no_preamble=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -68,6 +69,7 @@ class TestBundleCommand(unittest.TestCase):
             label=None,
             system_prompt=None,
             output=None,
+            no_preamble=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -88,6 +90,7 @@ class TestBundleCommand(unittest.TestCase):
             label="test",
             system_prompt=str(prompt_file),
             output=None,
+            no_preamble=True,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -303,6 +306,7 @@ class TestFullWorkflow(unittest.TestCase):
                 label="initial",
                 system_prompt=None,
                 output=None,
+                no_preamble=False,
             )
         )
         bundle_cmd.execute()

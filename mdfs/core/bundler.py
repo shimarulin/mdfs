@@ -5,6 +5,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from ..default_system_prompt import (
+    DEFAULT_SYSTEM_PROMPT,
+    PREAMBLE_TEXT,
+    QUICK_REMINDER_TEXT,
+)
+
 
 def _detect_max_fence(content: str) -> int:
     max_len = 0
@@ -34,16 +40,51 @@ def _lang_for_ext(path: str) -> str:
     return ext_map.get(Path(path).suffix.lower(), "text")
 
 
+def _generate_table_of_contents(file_paths: list[str]) -> str:
+    """Generate a table of contents from file paths."""
+    if not file_paths:
+        return ""
+    
+    lines = ["## Содержание\n"]
+    for rel_path in file_paths:
+        # Create anchor from filename (remove extension, replace special chars)
+        filename = Path(rel_path).name
+        anchor = filename.lower().replace(".", "")
+        lines.append(f"- [{rel_path}](#{anchor})")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def bundle(
     base_dir: str | Path,
     file_paths: list[str],
     system_prompt: str | None = None,
     heading_level: int = 3,
+    include_preamble: bool = True,
 ) -> str:
     base = Path(base_dir)
     parts: list[str] = []
 
-    if system_prompt:
+    # Add preamble if requested
+    if include_preamble:
+        parts.append(PREAMBLE_TEXT.rstrip())
+        parts.append("")
+        parts.append("--- START OF RULES ---")
+        parts.append("")
+        parts.append(DEFAULT_SYSTEM_PROMPT.rstrip())
+        parts.append("")
+        parts.append("--- END OF RULES ---")
+        parts.append("")
+        parts.append("**Now process the following document. Remember: do not echo the rules. Start directly with the requested output (e.g., file contents or confirmations).**")
+        parts.append("")
+        parts.append("---")
+        parts.append("")
+        # Add table of contents
+        toc = _generate_table_of_contents(file_paths)
+        if toc:
+            parts.append(toc)
+    elif system_prompt:
+        # Legacy behavior: if system_prompt is provided and preamble is disabled
         parts.append(system_prompt.rstrip())
         parts.append("")
         parts.append("---")
@@ -53,6 +94,12 @@ def bundle(
 
     for rel_path in file_paths:
         full_path = base / rel_path
+        
+        # Add quick reminder before each file
+        if include_preamble:
+            parts.append(QUICK_REMINDER_TEXT.rstrip())
+            parts.append("")
+        
         if not full_path.is_file():
             parts.append(f"{heading_prefix} `{rel_path}`")
             parts.append("")

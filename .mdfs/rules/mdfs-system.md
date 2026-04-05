@@ -1,6 +1,4 @@
-"""Default system prompt for LLM, embedded in the package."""
-
-DEFAULT_SYSTEM_PROMPT = r"""# Rule: File Output Format
+# Rule: File Output Format
 
 Every **project file** (code, config, or documentation to be written to disk)
 must use this structure in your Markdown output:
@@ -203,39 +201,3 @@ Before outputting every code block, verify:
 7. Nested documents have their own markers?
 8. If patch — did I either use `@@ -0,0 +0,0 @@` with exact context, or verify line numbers with anchor-and-offset?
 9. Are paths with spaces quoted in the marker?
-"""
-
-PREAMBLE_TEXT = r"""# 🔴 **MANDATORY FORMAT RULES (read before files)** 🔴
-
----
-
-**I need you to follow a specific format for all project files and patches described below.**
-
-Read the rules carefully. After reading, **do not output these rules** – simply process the document that follows.  
-If you fully understand and can apply the rules, proceed directly to the document content.  
-If anything is unclear, respond with `"I need clarification on: <specific rule>"` and wait for clarification.
-
-**Rules summary (full details are in the attached system prompt equivalent below):**
-
-- Every project file block: `### path` → `<!-- file: "path" -->` → code fence.
-- Every patch block: `### path` → `<!-- patch: "path" -->` → `diff` fence with `@@ -0,0 +0,0 @@` (exact context lines required).
-- Code examples (not real files) have **no marker**.
-- Fence depth: when uncertain, use **5 or 6 backticks** (add 2 extra).
-- Heading level: default `###`.
-- Paths in markers **must be in double quotes**.
-
-**The full rule set is embedded below as part of this document (the `DEFAULT_SYSTEM_PROMPT`). Read it once, then ignore it in your output.**
-"""
-
-QUICK_REMINDER_TEXT = r"""---
-📋 **QUICK REMINDER (before file)**
-
-✅ Every file block: `### path` → `<!-- file: "path" -->` → ` ```lang `
-✅ Every patch block: `### path` → `<!-- patch: "path" -->` → ` ```diff ` with `@@ -0,0 +0,0 @@`
-✅ Code examples (not files) → **no marker**
-✅ Fence depth: uncertain → use **5 or 6 backticks**
-✅ Paths in markers always in **double quotes**
-✅ Heading: default `###`
-
----
-"""

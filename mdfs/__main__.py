@@ -82,6 +82,8 @@ def main() -> None:
     p_bundle.add_argument("-l", "--label", help="Label for the context file")
     p_bundle.add_argument("-s", "--system-prompt", help="System prompt file")
     p_bundle.add_argument("-o", "--output", help="Custom output path")
+    p_bundle.add_argument("--no-preamble", action="store_true",
+                          help="Disable preamble and table of contents")
 
     p_paste = sub.add_parser("paste", help="Save clipboard as response")
     p_paste.add_argument("-l", "--label", help="Label for the response file")
