@@ -51,7 +51,7 @@ This gives you the `mdfs` command globally.
 > Or: python3 -m pip install --user pipx && pipx ensurepath.
 
 > ℹ️ Shell completions not installed automatically.
-> See [Shell completions](#shell-completions) section for setup.
+> See [Shell completions](#shell-setup--completions) section for setup.
 
 ### Option B: uv tool install
 
@@ -63,7 +63,7 @@ uv tool install git+https://github.com/shimarulin/mdfs.git
 ```
 
 > ℹ️ Shell completions not installed automatically.
-> See [Shell completions](#shell-completions) section for setup.
+> See [Shell completions](#shell-setup--completions) section for setup.
 
 ### Option C: pip install in a virtual environment
 
@@ -74,7 +74,7 @@ export PATH="$HOME/.local/share/mdfs/venv/bin:$PATH"  # add to your shell profil
 ```
 
 > ℹ️ Shell completions not installed automatically.
-> See [Shell completions](#shell-completions) section for setup.
+> See [Shell completions](#shell-setup--completions) section for setup.
 
 ### Option D: git submodule (for project-local tools)
 
