@@ -2,6 +2,7 @@
 
 import argparse
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +12,9 @@ from mdfs.__main__ import (
     cmd_bundle,
     cmd_extract,
     cmd_init,
+    cmd_log,
     cmd_paste,
+    _find_mdfs_root,
     _make_filename,
 )
 
@@ -325,6 +328,129 @@ class TestFullWorkflow(unittest.TestCase):
         # Step 7: Verify patches applied
         modified_content = main_py.read_text(encoding="utf-8")
         self.assertIn("print('world')", modified_content)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+
+class TestLogCommand(unittest.TestCase):
+    """Tests for mdfs log command."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.project_root = Path(self.tmpdir)
+
+        # Create project structure
+        (self.project_root / ".mdfs").mkdir()
+        (self.project_root / ".mdfs" / "contexts").mkdir(parents=True)
+        (self.project_root / ".mdfs" / "responses").mkdir(parents=True)
+
+    def test_cmd_log_empty(self):
+        """Test log command with no contexts or responses."""
+        args = argparse.Namespace(dir=str(self.project_root))
+        # Should not raise an exception
+        cmd_log(args)
+
+    def test_cmd_log_with_entries(self):
+        """Test log command displays contexts and responses."""
+        # Create some entries
+        contexts_dir = self.project_root / ".mdfs" / "contexts"
+        responses_dir = self.project_root / ".mdfs" / "responses"
+
+        (contexts_dir / "2026-01-01_120000__test.md").write_text("context", encoding="utf-8")
+        (responses_dir / "2026-01-01_120100__test.md").write_text("response", encoding="utf-8")
+
+        args = argparse.Namespace(dir=str(self.project_root))
+        # Should not raise an exception
+        cmd_log(args)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+
+class TestMakeFilename(unittest.TestCase):
+    """Unit tests for _make_filename helper."""
+
+    def test_make_filename_with_label(self):
+        """Test filename generation with label."""
+        result = _make_filename("test label")
+        self.assertIn("__test_label.md", result)
+
+    def test_make_filename_without_label(self):
+        """Test filename generation without label."""
+        result = _make_filename(None)
+        self.assertTrue(result.endswith(".md"))
+        self.assertNotIn("__", result)
+
+    def test_make_filename_special_chars(self):
+        """Test filename generation with special characters in label."""
+        result = _make_filename("test-123!@#")
+        self.assertIn(".md", result)
+        # Special chars should be removed
+        self.assertNotIn("!", result)
+        self.assertNotIn("@", result)
+        self.assertNotIn("#", result)
+
+
+class TestPasteErrorHandling(unittest.TestCase):
+    """Tests for error handling in paste command."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.project_root = Path(self.tmpdir)
+
+        # Create project structure
+        (self.project_root / ".mdfs").mkdir()
+        (self.project_root / ".mdfs" / "responses").mkdir(parents=True)
+
+    @patch("mdfs.__main__._get_clipboard")
+    def test_paste_empty_clipboard(self, mock_clipboard):
+        """Test paste command with empty clipboard."""
+        mock_clipboard.return_value = "   \n  \n  "
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            label="empty",
+            extract=False,
+            dry_run=False,
+        )
+
+        with self.assertRaises(SystemExit):
+            cmd_paste(args)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+
+class TestFindMdfsRoot(unittest.TestCase):
+    """Tests for _find_mdfs_root helper."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def test_find_mdfs_root_success(self):
+        """Test finding .mdfs directory."""
+        mdfs_dir = Path(self.tmpdir) / ".mdfs"
+        mdfs_dir.mkdir()
+
+        result = _find_mdfs_root(self.tmpdir)
+        self.assertEqual(result, Path(self.tmpdir).resolve())
+
+    def test_find_mdfs_root_nested(self):
+        """Test finding .mdfs from nested directory."""
+        mdfs_dir = Path(self.tmpdir) / ".mdfs"
+        mdfs_dir.mkdir()
+
+        nested = Path(self.tmpdir) / "src" / "nested"
+        nested.mkdir(parents=True)
+
+        result = _find_mdfs_root(nested)
+        self.assertEqual(result, Path(self.tmpdir).resolve())
+
+    def test_find_mdfs_root_not_found(self):
+        """Test error when .mdfs not found."""
+        with self.assertRaises(SystemExit):
+            _find_mdfs_root(self.tmpdir)
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)

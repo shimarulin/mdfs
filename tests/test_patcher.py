@@ -101,6 +101,109 @@ class TestApplyPatch(unittest.TestCase):
         with self.assertRaises(PatchError):
             apply_patch(original, diff)
 
+    def test_context_at_file_start(self):
+        """Test fuzzy matching when context is at the beginning of file."""
+        original = "first\nsecond\nthird\nfourth"
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -1,2 +1,3 @@\n"
+            " first\n second\n+inserted"
+        )
+        result = apply_patch(original, diff)
+        self.assertEqual(result, "first\nsecond\ninserted\nthird\nfourth")
+
+    def test_context_at_file_end(self):
+        """Test fuzzy matching when context is at the end of file."""
+        original = "first\nsecond\nthird\nlast"
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -3,2 +3,3 @@\n"
+            " third\n last\n+appended"
+        )
+        result = apply_patch(original, diff)
+        self.assertEqual(result, "first\nsecond\nthird\nlast\nappended")
+
+    def test_fuzzy_with_trailing_whitespace(self):
+        """Test fuzzy matching tolerates trailing whitespace differences."""
+        original = "line1  \nline2  \nline3"
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -1,3 +1,4 @@\n"
+            " line1\n line2\n+new_line\n line3"
+        )
+        result = apply_patch(original, diff)
+        self.assertIn("new_line", result)
+
+    def test_empty_diff(self):
+        """Test that empty diff returns original content."""
+        original = "line1\nline2\nline3"
+        diff = "--- a/f\n+++ b/f\n"
+        result = apply_patch(original, diff)
+        self.assertEqual(result, original)
+
+    def test_multiple_similar_blocks(self):
+        """Test fuzzy matching with multiple similar context blocks."""
+        original = (
+            "def foo():\n"
+            "    pass\n"
+            "\n"
+            "def bar():\n"
+            "    pass\n"
+            "\n"
+            "def baz():\n"
+            "    pass"
+        )
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -7,2 +7,3 @@\n"
+            " def baz():\n     pass\n+    return 42"
+        )
+        result = apply_patch(original, diff)
+        self.assertIn("return 42", result)
+        self.assertIn("def foo():", result)
+        self.assertIn("def bar():", result)
+
+    def test_fuzzy_with_hint_offset(self):
+        """Test fuzzy matching when actual line is far from hint."""
+        original = (
+            "line0\n"
+            "line1\n"
+            "line2\n"
+            "target_line\n"
+            "line4\n"
+            "line5"
+        )
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -2,3 +2,4 @@\n"
+            " line1\n line2\n target_line\n+inserted"
+        )
+        result = apply_patch(original, diff)
+        self.assertIn("inserted", result)
+        self.assertIn("target_line", result)
+
+    def test_single_line_file(self):
+        """Test patching a single-line file."""
+        original = "single_line"
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -1,1 +1,2 @@\n"
+            " single_line\n+new_line"
+        )
+        result = apply_patch(original, diff)
+        self.assertEqual(result, "single_line\nnew_line")
+
+    def test_empty_line_in_context(self):
+        """Test that empty lines in context are handled correctly."""
+        original = "line1\n\nline3"
+        diff = (
+            "--- a/f\n+++ b/f\n"
+            "@@ -1,3 +1,4 @@\n"
+            " line1\n \n+inserted\n line3"
+        )
+        result = apply_patch(original, diff)
+        self.assertEqual(result, "line1\n\ninserted\nline3")
+
 
 if __name__ == "__main__":
     unittest.main()
