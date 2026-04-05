@@ -24,6 +24,21 @@ from .bundler import bundle
 from .extractor import extract
 
 
+# ── Version ────────────────────────────────────────────────────────
+
+def _get_version() -> str:
+    """Read version from pyproject.toml."""
+    try:
+        toml_path = Path(__file__).parent.parent / "pyproject.toml"
+        content = toml_path.read_text(encoding="utf-8")
+        match = re.search(r'version\s*=\s*"([^"]+)"', content)
+        if match:
+            return match.group(1)
+    except Exception:
+        pass
+    return "unknown"
+
+
 # ── Naming helpers ──────────────────────────────────────────────────
 
 def _timestamp() -> str:
@@ -279,10 +294,14 @@ def main() -> None:
         description="MDFS — Markdown FileSystem tools",
     )
     parser.add_argument(
+        "-v", "--version", action="version",
+        version=f"%(prog)s {_get_version()}",
+    )
+    parser.add_argument(
         "-d", "--dir", default=".",
         help="Project directory (default: current)",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command", required=False)
 
     sub.add_parser("init", help="Initialize .mdfs directory")
 
@@ -307,6 +326,10 @@ def main() -> None:
     sub.add_parser("log", help="Show chronological log")
 
     args = parser.parse_args()
+
+    if args.command is None:
+        parser.print_help()
+        sys.exit(1)
 
     commands = {
         "init": cmd_init,
