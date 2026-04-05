@@ -7,6 +7,7 @@ Commands:
     paste    — create a response file from clipboard content
     extract  — write file blocks to disk, apply patch blocks
     log      — show chronological history
+    setup    — install/uninstall shell completions
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from pathlib import Path
 
 from .bundler import bundle
 from .extractor import extract
+from .commands.setup import SetupCommand
 
 
 # ── Version ────────────────────────────────────────────────────────
@@ -292,6 +294,21 @@ def cmd_log(args: argparse.Namespace) -> None:
         print(f"  {icon} {entry_type:8s}  {stem}")
 
 
+def cmd_setup(args: argparse.Namespace) -> None:
+    """Install or uninstall shell completions."""
+    cmd = SetupCommand()
+    
+    if args.install_completions:
+        exit_code = cmd.execute(install=True)
+    elif args.uninstall_completions:
+        exit_code = cmd.execute(install=False)
+    else:
+        print("Error: use --install-completions or --uninstall-completions", file=sys.stderr)
+        exit_code = 1
+    
+    sys.exit(exit_code)
+
+
 # ── Helpers ─────────────────────────────────────────────────────────
 
 def _print_actions(actions: list) -> None:
@@ -342,6 +359,19 @@ def main() -> None:
 
     sub.add_parser("log", help="Show chronological log")
 
+    p_setup = sub.add_parser("setup", help="Install/uninstall shell completions")
+    p_setup_group = p_setup.add_mutually_exclusive_group(required=False)
+    p_setup_group.add_argument(
+        "--install-completions",
+        action="store_true",
+        help="Install shell completions for current shell",
+    )
+    p_setup_group.add_argument(
+        "--uninstall-completions",
+        action="store_true",
+        help="Uninstall shell completions",
+    )
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -354,6 +384,7 @@ def main() -> None:
         "paste": cmd_paste,
         "extract": cmd_extract,
         "log": cmd_log,
+        "setup": cmd_setup,
     }
     commands[args.command](args)
 

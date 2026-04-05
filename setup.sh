@@ -6,6 +6,10 @@
 #   /path/to/mdfs/setup.sh --install         # permanent
 #   /path/to/mdfs/setup.sh --uninstall       # remove from config
 #   /path/to/mdfs/setup.sh --help            # show this help
+#
+# Alternative (if mdfs is already installed):
+#   mdfs setup --install-completions         # install shell completions
+#   mdfs setup --uninstall-completions       # uninstall shell completions
 
 set -euo pipefail
 
@@ -720,11 +724,15 @@ uninstall_fish() {
 usage() {
     echo "MDFS setup — adds bin/ to PATH and configures shell completions"
     echo ""
-    echo "Usage:"
+    echo "Usage (shell script):"
     echo "  source /path/to/mdfs/setup.sh            # current session"
     echo "  /path/to/mdfs/setup.sh --install         # permanent installation"
     echo "  /path/to/mdfs/setup.sh --uninstall       # remove from config"
     echo "  /path/to/mdfs/setup.sh --help            # show this help"
+    echo ""
+    echo "Usage (if mdfs is installed via uv/pipx):"
+    echo "  mdfs setup --install-completions         # install shell completions"
+    echo "  mdfs setup --uninstall-completions       # uninstall shell completions"
 }
 
 # ---------------------------------------------------------------------------
