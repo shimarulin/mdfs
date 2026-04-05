@@ -50,6 +50,9 @@ This gives you the `mdfs` command globally.
 > pacman -S python-pipx, brew install pipx.
 > Or: python3 -m pip install --user pipx && pipx ensurepath.
 
+> ℹ️ Shell completions not installed automatically.
+> See [Shell completions](#shell-completions) section for setup.
+
 ### Option B: uv tool install
 
 uv is a fast Python package manager that also
@@ -59,6 +62,9 @@ manages CLI tools (like pipx, but faster).
 uv tool install git+https://github.com/shimarulin/mdfs.git
 ```
 
+> ℹ️ Shell completions not installed automatically.
+> See [Shell completions](#shell-completions) section for setup.
+
 ### Option C: pip install in a virtual environment
 
 ```bash
@@ -66,6 +72,9 @@ python3 -m venv ~/.local/share/mdfs/venv
 ~/.local/share/mdfs/venv/bin/pip install git+https://github.com/shimarulin/mdfs.git
 export PATH="$HOME/.local/share/mdfs/venv/bin:$PATH"  # add to your shell profile
 ```
+
+> ℹ️ Shell completions not installed automatically.
+> See [Shell completions](#shell-completions) section for setup.
 
 ### Option D: git submodule (for project-local tools)
 
@@ -75,12 +84,16 @@ git submodule add https://github.com/shimarulin/mdfs.git tools/mdfs
 source tools/mdfs/setup.sh --install
 ```
 
+> ✅ Shell completions installed automatically.
+
 ### Option E: git clone + activate
 
 ```bash
 git clone https://github.com/shimarulin/mdfs.git ~/.local/share/mdfs
 source ~/.local/share/mdfs/setup.sh --install
 ```
+
+> ✅ Shell completions installed automatically.
 
 ### Option F: just source it
 
