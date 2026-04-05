@@ -10,6 +10,7 @@ This module provides the `mdfs setup` command which handles:
 from __future__ import annotations
 
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 from ..shell_setup import (
@@ -20,18 +21,26 @@ from ..shell_setup import (
     check_shell_completions,
     get_completions_dir,
 )
+from .base import BaseCommand
 
 
-class SetupCommand:
+class SetupCommand(BaseCommand):
     """Command for managing shell setup and completions."""
     
     MARKER_START = "# >>> mdfs >>>"
     MARKER_END = "# <<< mdfs <<<"
     
-    def __init__(self):
-        """Initialize the setup command."""
+    def __init__(self, args: Namespace):
+        """Initialize the setup command.
+        
+        Args:
+            args: Parsed command-line arguments
+        """
+        self.args = args
         self.shell_type = detect_shell()
         self.completions_dir = get_completions_dir()
+        # Setup command doesn't require .mdfs directory
+        self.root = Path.cwd()
     
     def install_completions(self) -> bool:
         """Install shell completions for the current shell.
@@ -294,18 +303,23 @@ fish_add_path {self.completions_dir.parent / 'bin'}
         
         return True
     
-    def execute(self, install: bool = True) -> int:
+    def execute(self) -> int:
         """Execute the setup command.
         
-        Args:
-            install: If True, install completions; if False, uninstall
+        Installs or uninstalls shell completions based on args.
         
         Returns:
             0 on success, 1 on failure
         """
-        if install:
+        if self.args.install_completions:
             success = self.install_completions()
-        else:
+        elif self.args.uninstall_completions:
             success = self.uninstall_completions()
+        else:
+            print(
+                "Error: use --install-completions or --uninstall-completions",
+                file=sys.stderr,
+            )
+            return 1
         
         return 0 if success else 1

@@ -1,0 +1,57 @@
+"""Initialize .mdfs directory structure."""
+
+from __future__ import annotations
+
+import sys
+from argparse import Namespace
+from pathlib import Path
+
+from .base import BaseCommand
+
+
+class InitCommand(BaseCommand):
+    """Command for initializing .mdfs directory structure."""
+
+    def __init__(self, args: Namespace):
+        """Initialize the init command.
+        
+        Args:
+            args: Parsed command-line arguments
+        """
+        # Init command doesn't need find_mdfs_root, override initialization
+        self.args = args
+        self.root = Path(args.dir).resolve() if args.dir else Path.cwd()
+
+    def execute(self) -> int:
+        """Execute the init command.
+        
+        Creates .mdfs directory structure with rules and .gitignore.
+        
+        Returns:
+            Exit code (0 for success)
+        """
+        mdfs = self.root / ".mdfs"
+
+        for subdir in ("rules", "contexts", "responses"):
+            (mdfs / subdir).mkdir(parents=True, exist_ok=True)
+
+        # Write default system prompt
+        prompt_path = mdfs / "rules" / "mdfs-system.md"
+        if not prompt_path.exists():
+            from ..default_system_prompt import DEFAULT_SYSTEM_PROMPT
+
+            prompt_path.write_text(DEFAULT_SYSTEM_PROMPT, encoding="utf-8")
+            print(f"  📝 Created {prompt_path.relative_to(self.root)}")
+
+        # Write .gitignore
+        gitignore = mdfs / ".gitignore"
+        if not gitignore.exists():
+            gitignore.write_text(
+                "# Keep rules in git, ignore generated content\n"
+                "contexts/\n"
+                "responses/\n",
+                encoding="utf-8",
+            )
+
+        print(f"✅ Initialized .mdfs in {self.root}")
+        return 0

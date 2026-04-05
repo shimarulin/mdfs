@@ -29,13 +29,19 @@ class TestSetupCommandInitialization:
     def test_init_detects_shell(self):
         """SetupCommand detects the current shell on initialization."""
         with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
-            cmd = SetupCommand()
+            args = MagicMock()
+            args.install_completions = False
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
             assert cmd.shell_type == "bash"
     
     def test_init_gets_completions_dir(self):
         """SetupCommand gets completions directory path."""
         with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
-            cmd = SetupCommand()
+            args = MagicMock()
+            args.install_completions = False
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
             assert cmd.completions_dir.name == "completions"
             # The directory may not exist yet, but the path is correct
             assert "completions" in str(cmd.completions_dir)
@@ -51,7 +57,10 @@ class TestInstallZshCompletions:
         with patch("mdfs.commands.setup.detect_shell", return_value="zsh"):
             with patch("mdfs.commands.setup.check_shell_completions", return_value=True):
                 with patch.object(SetupCommand, "_install_zsh_completions", return_value=True):
-                    cmd = SetupCommand()
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
                     success = cmd.install_completions()
                     assert success is True
     
@@ -67,7 +76,10 @@ class TestInstallZshCompletions:
                     "rc_files": [zshrc],
                 }
                 
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 result = cmd._install_zsh_completions()
                 
                 assert result is True
@@ -88,7 +100,10 @@ class TestInstallZshCompletions:
                     "rc_files": [zshrc],
                 }
                 
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 
                 # First install
                 cmd._install_zsh_completions()
@@ -112,7 +127,10 @@ class TestInstallBashCompletions:
         with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
             with patch("mdfs.commands.setup.check_shell_completions", return_value=True):
                 with patch.object(SetupCommand, "_install_bash_completions", return_value=True):
-                    cmd = SetupCommand()
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
                     success = cmd.install_completions()
                     assert success is True
     
@@ -128,7 +146,10 @@ class TestInstallBashCompletions:
                     "rc_files": [bashrc],
                 }
                 
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 result = cmd._install_bash_completions()
                 
                 assert result is True
@@ -147,7 +168,10 @@ class TestInstallBashCompletions:
                     "rc_files": [bashrc],
                 }
                 
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 
                 # First install
                 cmd._install_bash_completions()
@@ -168,7 +192,10 @@ class TestInstallFishCompletions:
         with patch("mdfs.commands.setup.detect_shell", return_value="fish"):
             with patch("mdfs.commands.setup.check_shell_completions", return_value=True):
                 with patch.object(SetupCommand, "_install_fish_completions", return_value=True):
-                    cmd = SetupCommand()
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
                     success = cmd.install_completions()
                     assert success is True
 
@@ -194,7 +221,10 @@ class TestUninstallZshCompletions:
                     "rc_files": [zshrc],
                 }
                 
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 cmd._uninstall_zsh_completions()
         
         # Check removed
@@ -225,7 +255,10 @@ class TestUninstallBashCompletions:
                     "rc_files": [bashrc],
                 }
                 
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 cmd._uninstall_bash_completions()
         
         # Check removed
@@ -242,7 +275,10 @@ class TestErrorHandling:
     def test_install_unknown_shell_fails(self, capsys):
         """Installation fails gracefully for unknown shell."""
         with patch("mdfs.commands.setup.detect_shell", return_value="unknown"):
-            cmd = SetupCommand()
+            args = MagicMock()
+            args.install_completions = False
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
             success = cmd.install_completions()
             
             assert success is False
@@ -252,7 +288,10 @@ class TestErrorHandling:
     def test_uninstall_unknown_shell_fails(self, capsys):
         """Uninstallation fails gracefully for unknown shell."""
         with patch("mdfs.commands.setup.detect_shell", return_value="unknown"):
-            cmd = SetupCommand()
+            args = MagicMock()
+            args.install_completions = False
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
             success = cmd.uninstall_completions()
             
             assert success is False
@@ -263,7 +302,10 @@ class TestErrorHandling:
         """Installation fails if completions don't exist."""
         with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
             with patch("mdfs.commands.setup.check_shell_completions", return_value=False):
-                cmd = SetupCommand()
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = False
+                cmd = SetupCommand(args)
                 success = cmd.install_completions()
                 
                 assert success is False
@@ -277,7 +319,7 @@ class TestExecuteMethod:
     """Tests for SetupCommand.execute() method."""
     
     def test_execute_install(self, tmp_path):
-        """execute() with install=True calls install_completions."""
+        """execute() with install_completions=True calls install_completions."""
         bashrc = tmp_path / ".bashrc"
         bash_profile = tmp_path / ".bash_profile"
         
@@ -289,14 +331,17 @@ class TestExecuteMethod:
                         "rc_files": [bashrc],
                     }
                     
-                    cmd = SetupCommand()
-                    exit_code = cmd.execute(install=True)
+                    args = MagicMock()
+                    args.install_completions = True
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    exit_code = cmd.execute()
                     
                     assert exit_code == 0
                     assert bashrc.exists()
     
     def test_execute_uninstall(self, tmp_path):
-        """execute() with install=False calls uninstall_completions."""
+        """execute() with uninstall_completions=True calls uninstall_completions."""
         bashrc = tmp_path / ".bashrc"
         bash_profile = tmp_path / ".bash_profile"
         
@@ -310,8 +355,11 @@ class TestExecuteMethod:
                     "rc_files": [bashrc],
                 }
                 
-                cmd = SetupCommand()
-                exit_code = cmd.execute(install=False)
+                args = MagicMock()
+                args.install_completions = False
+                args.uninstall_completions = True
+                cmd = SetupCommand(args)
+                exit_code = cmd.execute()
                 
                 assert exit_code == 0
                 # Block should be removed
@@ -322,8 +370,11 @@ class TestExecuteMethod:
     def test_execute_install_returns_error_code_on_failure(self, capsys):
         """execute() returns 1 on failure."""
         with patch("mdfs.commands.setup.detect_shell", return_value="unknown"):
-            cmd = SetupCommand()
-            exit_code = cmd.execute(install=True)
+            args = MagicMock()
+            args.install_completions = True
+            args.uninstall_completions = False
+            cmd = SetupCommand(args)
+            exit_code = cmd.execute()
             
             assert exit_code == 1
 
@@ -346,16 +397,21 @@ class TestEndToEnd:
                         "rc_files": [bashrc],
                     }
                     
-                    cmd = SetupCommand()
+                    args = MagicMock()
+                    args.install_completions = True
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
                     
                     # Install
-                    assert cmd.execute(install=True) == 0
+                    assert cmd.execute() == 0
                     assert bashrc.exists()
                     content_after_install = bashrc.read_text()
                     assert "# >>> mdfs >>>" in content_after_install
                     
                     # Uninstall
-                    assert cmd.execute(install=False) == 0
+                    args.install_completions = False
+                    args.uninstall_completions = True
+                    assert cmd.execute() == 0
                     content_after_uninstall = bashrc.read_text()
                     assert "# >>> mdfs >>>" not in content_after_uninstall
     
@@ -372,10 +428,13 @@ class TestEndToEnd:
                         "rc_files": [zshrc],
                     }
                     
-                    cmd = SetupCommand()
+                    args = MagicMock()
+                    args.install_completions = True
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
                     
                     # Install
-                    assert cmd.execute(install=True) == 0
+                    assert cmd.execute() == 0
                     assert zshenv.exists()
                     assert zshrc.exists()
                     
@@ -385,7 +444,9 @@ class TestEndToEnd:
                     assert "# >>> mdfs >>>" in zshrc_content
                     
                     # Uninstall
-                    assert cmd.execute(install=False) == 0
+                    args.install_completions = False
+                    args.uninstall_completions = True
+                    assert cmd.execute() == 0
                     zshenv_content = zshenv.read_text()
                     zshrc_content = zshrc.read_text()
                     assert "# >>> mdfs >>>" not in zshenv_content

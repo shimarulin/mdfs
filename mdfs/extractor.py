@@ -21,6 +21,16 @@ def extract(
     base_dir: str | Path,
     dry_run: bool = False,
 ) -> list[Action]:
+    """Extract files and apply patches from Markdown text.
+    
+    Args:
+        markdown_text: Markdown content containing file and patch blocks
+        base_dir: Base directory for file paths
+        dry_run: If True, don't write files or apply patches
+        
+    Returns:
+        List of Action objects describing what was done
+    """
     base = Path(base_dir)
     blocks = parse(markdown_text)
     files, patches = split_files_and_patches(blocks)
