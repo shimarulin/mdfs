@@ -40,6 +40,8 @@ class BundleCommand(BaseCommand):
             file_paths=self.args.files,
             system_prompt=system_prompt,
             include_preamble=include_preamble,
+            respect_gitignore=not self.args.no_gitignore if hasattr(self.args, "no_gitignore") else True,
+            interactive=True,
         )
 
         if self.args.output:

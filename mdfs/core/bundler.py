@@ -10,6 +10,7 @@ from ..default_system_prompt import (
     PREAMBLE_TEXT,
     QUICK_REMINDER_TEXT,
 )
+from .gitignore import GitignoreFilter, is_binary_file
 
 
 def _detect_max_fence(content: str) -> int:
@@ -40,6 +41,78 @@ def _lang_for_ext(path: str) -> str:
     return ext_map.get(Path(path).suffix.lower(), "text")
 
 
+def _expand_file_paths(
+    base_dir: str | Path,
+    input_paths: list[str],
+    gitignore_filter: GitignoreFilter | None = None,
+    interactive: bool = True,
+) -> list[str]:
+    """Expand input paths (files and directories) into a list of files.
+    
+    Args:
+        base_dir: Base directory for relative paths
+        input_paths: List of files and/or directories
+        gitignore_filter: GitignoreFilter instance (optional)
+        interactive: Whether to ask user for confirmation on ignored files
+        
+    Returns:
+        List of file paths relative to base_dir
+    """
+    base = Path(base_dir)
+    result: list[str] = []
+    ignored_files: list[str] = []
+
+    for input_path in input_paths:
+        full_path = base / input_path
+        
+        if full_path.is_file():
+            # Single file
+            rel_path = str(full_path.relative_to(base))
+            
+            # Check if it's binary
+            if is_binary_file(full_path):
+                continue
+                
+            # Check gitignore
+            if gitignore_filter and gitignore_filter.should_ignore(rel_path):
+                ignored_files.append(rel_path)
+            else:
+                result.append(rel_path)
+                
+        elif full_path.is_dir():
+            # Directory: recursively collect files
+            for file_path in sorted(full_path.rglob("*")):
+                if not file_path.is_file():
+                    continue
+                    
+                # Skip binary files
+                if is_binary_file(file_path):
+                    continue
+                    
+                rel_path = str(file_path.relative_to(base))
+                
+                # Check gitignore
+                if gitignore_filter and gitignore_filter.should_ignore(rel_path):
+                    ignored_files.append(rel_path)
+                else:
+                    result.append(rel_path)
+
+    # Handle ignored files with user confirmation
+    if ignored_files and interactive:
+        for ignored_path in ignored_files:
+            try:
+                response = input(
+                    f"⚠️  '{ignored_path}' is in .gitignore. Include it? (y/n): "
+                ).strip().lower()
+                if response in ("y", "yes"):
+                    result.append(ignored_path)
+            except EOFError:
+                # Non-interactive mode (e.g., in tests)
+                pass
+
+    return sorted(result)
+
+
 def _generate_table_of_contents(file_paths: list[str]) -> str:
     """Generate a table of contents from file paths."""
     if not file_paths:
@@ -61,8 +134,35 @@ def bundle(
     system_prompt: str | None = None,
     heading_level: int = 3,
     include_preamble: bool = True,
+    respect_gitignore: bool = True,
+    interactive: bool = True,
 ) -> str:
+    """Bundle project files into a single Markdown document.
+    
+    Args:
+        base_dir: Base directory for file resolution
+        file_paths: List of files and/or directories to bundle
+        system_prompt: Optional system prompt to include
+        heading_level: Markdown heading level (default: 3)
+        include_preamble: Whether to include mandatory format rules preamble
+        respect_gitignore: Whether to respect .gitignore (default: True)
+        interactive: Whether to ask for confirmation on ignored files
+        
+    Returns:
+        Bundled markdown document as string
+    """
     base = Path(base_dir)
+    
+    # Initialize gitignore filter if requested
+    gitignore_filter = None
+    if respect_gitignore:
+        gitignore_filter = GitignoreFilter(base)
+    
+    # Expand file paths (handle directories and gitignore)
+    expanded_paths = _expand_file_paths(
+        base, file_paths, gitignore_filter, interactive
+    )
+    
     parts: list[str] = []
 
     # Add preamble if requested
@@ -80,7 +180,7 @@ def bundle(
         parts.append("---")
         parts.append("")
         # Add table of contents
-        toc = _generate_table_of_contents(file_paths)
+        toc = _generate_table_of_contents(expanded_paths)
         if toc:
             parts.append(toc)
     elif system_prompt:
@@ -92,7 +192,7 @@ def bundle(
 
     heading_prefix = "#" * heading_level
 
-    for rel_path in file_paths:
+    for rel_path in expanded_paths:
         full_path = base / rel_path
         
         # Add quick reminder before each file
