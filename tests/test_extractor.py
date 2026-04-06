@@ -169,6 +169,118 @@ class TestExtract(unittest.TestCase):
         self.assertEqual(actions[0].action, "info")
         self.assertIn("No markers found", actions[0].detail)
 
+    def test_force_overwrite(self):
+        """Test that force flag overwrites existing files without prompting."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        (src / "main.py").write_text("old content\n", encoding="utf-8")
+
+        md = (
+            "<!-- file: \"src/main.py\" -->\n"
+            "```python\n"
+            "new content\n"
+            "```\n"
+        )
+        actions = extract(md, self.tmpdir, force=True)
+        self.assertEqual(actions[0].action, "write")
+        written = (src / "main.py").read_text(encoding="utf-8")
+        self.assertIn("new content", written)
+
+    def test_skip_action(self):
+        """Test that skip action is returned for skipped files."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        original_content = "original\n"
+        (src / "main.py").write_text(original_content, encoding="utf-8")
+
+        md = (
+            "<!-- file: \"src/main.py\" -->\n"
+            "```python\n"
+            "new content\n"
+            "```\n"
+        )
+        # Simulate user choosing 'n' (skip)
+        import io
+        import sys
+        old_stdin = sys.stdin
+        try:
+            sys.stdin = io.StringIO("n\n")
+            actions = extract(md, self.tmpdir, force=False)
+            self.assertEqual(actions[0].action, "skip")
+            # File should not be modified
+            written = (src / "main.py").read_text(encoding="utf-8")
+            self.assertEqual(written, original_content)
+        finally:
+            sys.stdin = old_stdin
+
+    def test_yes_to_all(self):
+        """Test that Y (yes to all) works for multiple files."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        (src / "file1.py").write_text("old1\n", encoding="utf-8")
+        (src / "file2.py").write_text("old2\n", encoding="utf-8")
+
+        md = (
+            "<!-- file: \"src/file1.py\" -->\n"
+            "```python\n"
+            "new1\n"
+            "```\n"
+            "<!-- file: \"src/file2.py\" -->\n"
+            "```python\n"
+            "new2\n"
+            "```\n"
+        )
+        # Simulate user choosing 'Y' (yes to all) on first file
+        import io
+        import sys
+        old_stdin = sys.stdin
+        try:
+            sys.stdin = io.StringIO("Y\n")
+            actions = extract(md, self.tmpdir, force=False)
+            # Both files should be written
+            self.assertEqual(len([a for a in actions if a.action == "write"]), 2)
+            file1 = (src / "file1.py").read_text(encoding="utf-8")
+            file2 = (src / "file2.py").read_text(encoding="utf-8")
+            self.assertIn("new1", file1)
+            self.assertIn("new2", file2)
+        finally:
+            sys.stdin = old_stdin
+
+    def test_no_to_all(self):
+        """Test that N (no to all) works for multiple files."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        original1 = "old1\n"
+        original2 = "old2\n"
+        (src / "file1.py").write_text(original1, encoding="utf-8")
+        (src / "file2.py").write_text(original2, encoding="utf-8")
+
+        md = (
+            "<!-- file: \"src/file1.py\" -->\n"
+            "```python\n"
+            "new1\n"
+            "```\n"
+            "<!-- file: \"src/file2.py\" -->\n"
+            "```python\n"
+            "new2\n"
+            "```\n"
+        )
+        # Simulate user choosing 'N' (no to all) on first file
+        import io
+        import sys
+        old_stdin = sys.stdin
+        try:
+            sys.stdin = io.StringIO("N\n")
+            actions = extract(md, self.tmpdir, force=False)
+            # Both files should be skipped
+            self.assertEqual(len([a for a in actions if a.action == "skip"]), 2)
+            file1 = (src / "file1.py").read_text(encoding="utf-8")
+            file2 = (src / "file2.py").read_text(encoding="utf-8")
+            self.assertEqual(file1, original1)
+            self.assertEqual(file2, original2)
+        finally:
+            sys.stdin = old_stdin
+
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 

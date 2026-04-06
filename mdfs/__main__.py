@@ -97,6 +97,8 @@ def main() -> None:
     p_extract.add_argument("-i", "--input", required=True,
                            help="Input Markdown file")
     p_extract.add_argument("--dry-run", action="store_true")
+    p_extract.add_argument("-f", "--force", action="store_true",
+                           help="Force overwrite all existing files")
 
     sub.add_parser("log", help="Show chronological log")
 
