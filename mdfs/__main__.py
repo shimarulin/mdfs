@@ -78,10 +78,14 @@ def main() -> None:
 
     p_bundle = sub.add_parser("bundle", help="Bundle files into context.md")
     p_bundle.add_argument("-f", "--files", nargs="+", required=True,
-                          help="Project-relative file paths")
+                          help="Project-relative file paths or directories")
     p_bundle.add_argument("-l", "--label", help="Label for the context file")
     p_bundle.add_argument("-s", "--system-prompt", help="System prompt file")
     p_bundle.add_argument("-o", "--output", help="Custom output path")
+    p_bundle.add_argument("--no-preamble", action="store_true",
+                          help="Disable preamble and table of contents")
+    p_bundle.add_argument("--no-gitignore", action="store_true",
+                          help="Include files that are in .gitignore")
 
     p_paste = sub.add_parser("paste", help="Save clipboard as response")
     p_paste.add_argument("-l", "--label", help="Label for the response file")

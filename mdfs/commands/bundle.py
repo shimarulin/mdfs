@@ -32,10 +32,16 @@ class BundleCommand(BaseCommand):
             if default_prompt.exists():
                 system_prompt = default_prompt.read_text(encoding="utf-8")
 
+        # Determine whether to include preamble
+        include_preamble = not self.args.no_preamble
+
         result = bundle(
             base_dir=self.root,
             file_paths=self.args.files,
             system_prompt=system_prompt,
+            include_preamble=include_preamble,
+            respect_gitignore=not self.args.no_gitignore if hasattr(self.args, "no_gitignore") else True,
+            interactive=True,
         )
 
         if self.args.output:
@@ -46,8 +52,12 @@ class BundleCommand(BaseCommand):
 
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(result, encoding="utf-8")
+        try:
+            display_path = out_path.relative_to(self.root)
+        except ValueError:
+            display_path = out_path
         print(
-            f"  📦 Context saved: {out_path.relative_to(self.root)}",
+            f"  📦 Context saved: {display_path}",
             file=__import__("sys").stderr,
         )
         return 0

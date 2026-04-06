@@ -45,6 +45,7 @@ class TestBundleCommand(unittest.TestCase):
             label="initial setup",
             system_prompt=None,
             output=None,
+            no_preamble=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -56,8 +57,8 @@ class TestBundleCommand(unittest.TestCase):
 
         # Check content
         content = contexts[0].read_text(encoding="utf-8")
-        self.assertIn("<!-- file: src/main.py -->", content)
-        self.assertIn("<!-- file: src/utils.py -->", content)
+        self.assertIn("<!-- file: \"src/main.py\" -->", content)
+        self.assertIn("<!-- file: \"src/utils.py\" -->", content)
         self.assertIn("def main():", content)
 
     def test_bundle_without_label(self):
@@ -68,6 +69,7 @@ class TestBundleCommand(unittest.TestCase):
             label=None,
             system_prompt=None,
             output=None,
+            no_preamble=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -88,6 +90,7 @@ class TestBundleCommand(unittest.TestCase):
             label="test",
             system_prompt=str(prompt_file),
             output=None,
+            no_preamble=True,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -120,7 +123,7 @@ class TestExtractCommand(unittest.TestCase):
         """Test that extract writes new files from markdown."""
         markdown_file = self.project_root / ".mdfs" / "responses" / "test.md"
         markdown_file.write_text(
-            "<!-- file: src/new.py -->\n"
+            "<!-- file: \"src/new.py\" -->\n"
             "```python\n"
             "y = 2\n"
             "```\n",
@@ -144,7 +147,7 @@ class TestExtractCommand(unittest.TestCase):
         """Test that extract applies patches to existing files."""
         markdown_file = self.project_root / ".mdfs" / "responses" / "patch.md"
         markdown_file.write_text(
-            "<!-- patch: src/main.py -->\n"
+            "<!-- patch: \"src/main.py\" -->\n"
             "```diff\n"
             "--- a/src/main.py\n"
             "+++ b/src/main.py\n"
@@ -172,7 +175,7 @@ class TestExtractCommand(unittest.TestCase):
         """Test that dry_run doesn't modify files."""
         markdown_file = self.project_root / ".mdfs" / "responses" / "test.md"
         markdown_file.write_text(
-            "<!-- file: src/dryrun.py -->\n"
+            "<!-- file: \"src/dryrun.py\" -->\n"
             "```python\n"
             "z = 3\n"
             "```\n",
@@ -303,6 +306,7 @@ class TestFullWorkflow(unittest.TestCase):
                 label="initial",
                 system_prompt=None,
                 output=None,
+                no_preamble=False,
             )
         )
         bundle_cmd.execute()
@@ -319,12 +323,13 @@ class TestFullWorkflow(unittest.TestCase):
         response_content = (
             "# LLM Response\n"
             "Improved the code:\n"
-            "<!-- patch: src/main.py -->\n"
+            "<!-- patch: \"src/main.py\" -->\n"
             "```diff\n"
             "--- a/src/main.py\n"
             "+++ b/src/main.py\n"
             "@@ -1,2 +1,3 @@\n"
-            " def greet():\n     print('hello')\n"
+            " def greet():\n"
+            "     print('hello')\n"
             "+    print('world')\n"
             "```\n"
         )

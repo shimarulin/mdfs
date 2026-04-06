@@ -1,0 +1,3 @@
+# Keep rules in git, ignore generated content
+contexts/
+responses/
