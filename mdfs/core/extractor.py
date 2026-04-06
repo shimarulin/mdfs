@@ -36,6 +36,11 @@ def extract(
     files, patches = split_files_and_patches(blocks)
     actions: list[Action] = []
 
+    # Check if no markers found
+    if not files and not patches:
+        actions.append(Action("info", "", "No markers found for extraction"))
+        return actions
+
     for block in files:
         target = base / block.path
         

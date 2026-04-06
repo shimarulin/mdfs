@@ -157,6 +157,18 @@ class TestExtract(unittest.TestCase):
         self.assertIn("# Test", written)
         self.assertIn("```bash", written)
 
+    def test_no_markers_found(self):
+        """Test that info action is returned when no markers are found."""
+        md = (
+            "# This is just a Markdown document\n"
+            "\n"
+            "No file or patch markers here.\n"
+        )
+        actions = extract(md, self.tmpdir)
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0].action, "info")
+        self.assertIn("No markers found", actions[0].detail)
+
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
