@@ -110,7 +110,7 @@ cd your-project
 mdfs init
 
 # 2. Bundle files for LLM
-mdfs bundle -f src/app.py src/lib.py docs/api.md -l "add auth module"
+mdfs bundle src/app.py src/lib.py docs/api.md -l "add auth module"
 #   📦 Context saved: .mdfs/contexts/2026-04-04_143022__add_auth_module.md
 
 # 3. Attach to LLM chat:
@@ -146,8 +146,8 @@ mdfs log
 Create `.mdfs/` directory structure in the current project.
 
 ```bash
-mdfs init
-mdfs init -d /path/to/project
+mdfs init                   # initialize in current directory
+mdfs init -d /path/to/proj  # initialize in specific directory
 ```
 
 Creates:
@@ -160,56 +160,89 @@ Creates:
 └── responses/          # LLM responses
 ```
 
+**Why**: Sets up project structure for MDFS workflow. Safe to run multiple times.
+
 ### `mdfs bundle`
 
 Pack project files into a single Markdown document.
 
 ```bash
-mdfs bundle -f file1.py file2.py ...   # paths relative to project root
-mdfs bundle -f src/*.py -l "my label"  # with label
-mdfs bundle -f src/*.py -o custom.md   # custom output path
-mdfs bundle -f src/*.py -s prompt.md   # custom system prompt
+mdfs bundle file1.py file2.py ...      # paths relative to project root
+mdfs bundle src/*.py -l "my label"     # with label
+mdfs bundle src/*.py -o custom.md      # custom output path
+mdfs bundle src/*.py -s prompt.md      # custom system prompt
+mdfs bundle src/*.py --no-preamble     # without table of contents
+mdfs bundle src/*.py --no-gitignore    # include .gitignore'd files
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-f, --files` | Files to include (required) |
+| Argument/Flag | Description |
+|---------------|-------------|
+| `files` (positional) | File paths or directories to include (required, multiple allowed) |
 | `-l, --label` | Human-readable label for filename |
 | `-s, --system-prompt` | Custom system prompt file |
 | `-o, --output` | Custom output path (default: `.mdfs/contexts/<timestamp>.md`) |
+| `--no-preamble` | Disable preamble and table of contents |
+| `--no-gitignore` | Include files that are in `.gitignore` |
+
+**Usage notes:**
+- `files` are positional arguments (come before flags)
+- Multiple files/directories are supported
+- Paths are relative to project root
 
 ### `mdfs paste`
 
 Save clipboard content as a response file.
 
 ```bash
-mdfs paste -l "my label"              # save only
-mdfs paste -l "my label" --extract    # save + extract files + apply patches
-mdfs paste -l "my label" -x --dry-run # preview without writing
+mdfs paste                                 # save only (auto-label)
+mdfs paste "my label"                      # save with label
+mdfs paste "my label" --extract            # save + extract files + apply patches
+mdfs paste "my label" -x --dry-run         # preview without writing
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-l, --label` | Human-readable label for filename |
-| `-x, --extract` | Also extract files and apply patches |
-| `--dry-run` | Show what would happen without writing |
+| Argument/Flag | Description |
+|---------------|-------------|
+| `label` (positional, optional) | Human-readable label for filename. If omitted, auto-generated from timestamp |
+| `-x, --extract` | Also extract files and apply patches from response |
+| `--dry-run` | Show what would happen without writing files |
+
+**Usage notes:**
+- Label is a positional argument (not a flag), comes after `mdfs paste`
+- Without `--extract`, only saves the response file, doesn't process it
+- With `--extract`, also extracts files and applies patches (useful for single-command workflow)
+- `--dry-run` works with both save and extract modes
 
 ### `mdfs extract`
 
 Extract files and apply patches from any Markdown file.
 
 ```bash
-mdfs extract -i response.md
-mdfs extract -i response.md --dry-run
+mdfs extract response.md            # extract and write files
+mdfs extract response.md --dry-run  # preview without writing
+mdfs extract response.md -f         # force overwrite all files
 ```
+
+| Flag | Description |
+|------|-------------|
+| `input` (positional) | Path to Markdown file to extract from (required) |
+| `--dry-run` | Show what would happen without writing files |
+| `-f, --force` | Force overwrite all existing files without prompting |
+
+**Usage notes:**
+- Without `--force`, prompts before overwriting existing files
+- Supports both full files and unified diff patches
+- Uses fuzzy matching for patches (line numbers are hints, context lines matter)
 
 ### `mdfs log`
 
-Show chronological history of contexts and responses.
+Show chronological history of contexts and responses in `.mdfs/`.
 
 ```bash
-mdfs log
+mdfs log              # show all contexts and responses
+mdfs log -d /path    # show history for specific project directory
 ```
+
+Displays all bundled contexts and LLM responses with timestamps.
 
 ## File format (MDFS markers)
 
@@ -316,13 +349,20 @@ your-project/
 
 For git clone installations (Option E), the `setup.sh` script:
 1. Adds MDFS `bin/` to `$PATH` (for current session)
-2. Delegates to `mdfs setup --install-completions` (for permanent setup)
+2. Delegates to `mdfs setup` (for permanent setup)
 
 **For other installation methods** (uv, pipx), use `mdfs setup` directly:
 ```bash
-mdfs setup -i      # install completions
-mdfs setup -u      # uninstall completions
+mdfs setup                 # interactive: auto-detect and ask
+mdfs setup -i              # install completions for current shell
+mdfs setup -u              # uninstall completions
 ```
+
+| Flag | Description |
+|------|-------------|
+| `-i, --install-completions` | Install shell completions for detected shell |
+| `-u, --uninstall-completions` | Uninstall shell completions |
+| (none) | Interactive mode: auto-detects shell and asks for confirmation |
 
 ### Usage
 
@@ -337,13 +377,15 @@ Activates MDFS in the current shell session. After closing the terminal, you'll 
 #### Permanent Installation
 ```bash
 /path/to/mdfs/setup.sh --install
-# Delegates to: mdfs setup -i
+# or directly:
+mdfs setup -i
 ```
 
 #### Removing Installation
 ```bash
 /path/to/mdfs/setup.sh --uninstall
-# Delegates to: mdfs setup -u
+# or directly:
+mdfs setup -u
 ```
 
 #### Help
