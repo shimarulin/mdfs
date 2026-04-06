@@ -636,18 +636,22 @@ class TestExecuteErrorHandling:
     """Tests for execute() method error cases."""
     
     def test_execute_no_flags_returns_error(self, capsys):
-        """execute() returns error when no flags provided."""
+        """execute() auto-detects and asks when no flags provided."""
         with patch("mdfs.commands.setup.detect_shell", return_value="bash"):
-            args = MagicMock()
-            args.install_completions = False
-            args.uninstall_completions = False
-            cmd = SetupCommand(args)
-            exit_code = cmd.execute()
-            
-            assert exit_code == 1
-            captured = capsys.readouterr()
-            assert "Error" in captured.err
-            assert "--install-completions" in captured.err or "--uninstall-completions" in captured.err
+            with patch("mdfs.commands.setup.get_shell_config_files") as mock_get_files:
+                mock_get_files.return_value = {
+                    "env_files": [Path("/home/user/.bashrc")],
+                    "rc_files": [Path("/home/user/.bashrc")],
+                }
+                with patch("builtins.input", return_value="n"):
+                    args = MagicMock()
+                    args.install_completions = False
+                    args.uninstall_completions = False
+                    cmd = SetupCommand(args)
+                    result = cmd.execute()
+                    
+                    # Should return 0 when user cancels
+                    assert result == 0
     
     def test_execute_install_failed_returns_error_code(self, capsys):
         """execute() returns 1 when install fails."""

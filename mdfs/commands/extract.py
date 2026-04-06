@@ -24,7 +24,8 @@ class ExtractCommand(BaseCommand):
         """
         md_text = Path(self.args.input).read_text(encoding="utf-8")
         actions = do_extract(
-            md_text, base_dir=self.root, dry_run=self.args.dry_run
+            md_text, base_dir=self.root, dry_run=self.args.dry_run,
+            force=getattr(self.args, 'force', False)
         )
         print_actions(actions)
 

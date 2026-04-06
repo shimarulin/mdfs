@@ -307,19 +307,72 @@ fish_add_path {self.completions_dir.parent / 'bin'}
         """Execute the setup command.
         
         Installs or uninstalls shell completions based on args.
+        If no args provided, auto-detects and asks for confirmation.
         
         Returns:
             0 on success, 1 on failure
         """
+        # If explicit flags are provided, use them
         if self.args.install_completions:
             success = self.install_completions()
         elif self.args.uninstall_completions:
             success = self.uninstall_completions()
         else:
-            print(
-                "Error: use --install-completions or --uninstall-completions",
-                file=sys.stderr,
-            )
-            return 1
+            # Auto-detect: check if completions are already installed
+            success = self._auto_detect_and_ask()
         
         return 0 if success else 1
+    
+    def _auto_detect_and_ask(self) -> bool:
+        """Auto-detect completion status and ask user for confirmation.
+        
+        Returns:
+            True if operation succeeded or was cancelled, False otherwise
+        """
+        config_files = get_shell_config_files(self.shell_type)
+        
+        # Check if completions are already installed by looking for markers
+        completions_installed = False
+        
+        if self.shell_type == "zsh":
+            zshrc = config_files["rc_files"][0]
+            if zshrc.exists():
+                content = zshrc.read_text(encoding="utf-8")
+                completions_installed = self.MARKER_START in content
+        elif self.shell_type == "bash":
+            bashrc = config_files["rc_files"][0]
+            if bashrc.exists():
+                content = bashrc.read_text(encoding="utf-8")
+                completions_installed = self.MARKER_START in content
+        elif self.shell_type == "fish":
+            fish_conf = config_files["env_files"][0]
+            if fish_conf.exists():
+                content = fish_conf.read_text(encoding="utf-8")
+                completions_installed = self.MARKER_START in content
+        
+        if self.shell_type == "unknown":
+            print(
+                "Error: could not detect your shell.",
+                file=sys.stderr,
+            )
+            print(
+                "Supported shells: zsh, bash, fish",
+                file=sys.stderr,
+            )
+            return False
+        
+        # Ask user what to do
+        if completions_installed:
+            action = input(f"Shell completions already installed for {self.shell_type}. Uninstall? (y/n): ")
+            if action.lower() == "y":
+                return self.uninstall_completions()
+            else:
+                print("Cancelled.", file=sys.stderr)
+                return True
+        else:
+            action = input(f"Install shell completions for {self.shell_type}? (y/n): ")
+            if action.lower() == "y":
+                return self.install_completions()
+            else:
+                print("Cancelled.", file=sys.stderr)
+                return True

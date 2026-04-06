@@ -46,6 +46,7 @@ class TestBundleCommand(unittest.TestCase):
             system_prompt=None,
             output=None,
             no_preamble=False,
+            no_gitignore=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -70,6 +71,7 @@ class TestBundleCommand(unittest.TestCase):
             system_prompt=None,
             output=None,
             no_preamble=False,
+            no_gitignore=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -91,6 +93,7 @@ class TestBundleCommand(unittest.TestCase):
             system_prompt=str(prompt_file),
             output=None,
             no_preamble=True,
+            no_gitignore=False,
         )
         cmd = BundleCommand(args)
         cmd.execute()
@@ -134,6 +137,7 @@ class TestExtractCommand(unittest.TestCase):
             dir=str(self.project_root),
             input=str(markdown_file),
             dry_run=False,
+            force=False,
         )
         cmd = ExtractCommand(args)
         cmd.execute()
@@ -162,6 +166,7 @@ class TestExtractCommand(unittest.TestCase):
             dir=str(self.project_root),
             input=str(markdown_file),
             dry_run=False,
+            force=False,
         )
         cmd = ExtractCommand(args)
         cmd.execute()
@@ -186,6 +191,7 @@ class TestExtractCommand(unittest.TestCase):
             dir=str(self.project_root),
             input=str(markdown_file),
             dry_run=True,
+            force=False,
         )
         cmd = ExtractCommand(args)
         cmd.execute()
@@ -307,6 +313,7 @@ class TestFullWorkflow(unittest.TestCase):
                 system_prompt=None,
                 output=None,
                 no_preamble=False,
+                no_gitignore=False,
             )
         )
         bundle_cmd.execute()
@@ -343,6 +350,7 @@ class TestFullWorkflow(unittest.TestCase):
                 dir=str(self.project_root),
                 input=str(response_file),
                 dry_run=False,
+                force=False,
             )
         )
         extract_cmd.execute()
@@ -441,6 +449,34 @@ class TestPasteErrorHandling(unittest.TestCase):
         args = argparse.Namespace(
             dir=str(self.project_root),
             label="valid",
+            extract=False,
+            dry_run=False,
+        )
+
+        cmd = PasteCommand(args)
+        result = cmd.execute()
+        
+        # Should return 0 when clipboard has valid content
+        self.assertEqual(result, 0)
+        
+        # Response file should be created
+        responses = list((self.project_root / ".mdfs" / "responses").glob("*.md"))
+        self.assertEqual(len(responses), 1)
+
+    @patch("mdfs.utils.get_clipboard")
+    def test_paste_without_label(self, mock_clipboard):
+        """Test paste command without label argument."""
+        mock_clipboard.return_value = (
+            "# Response\n"
+            "<!-- file: test.py -->\n"
+            "```python\n"
+            "x = 1\n"
+            "```\n"
+        )
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            label=None,
             extract=False,
             dry_run=False,
         )
