@@ -77,7 +77,7 @@ def main() -> None:
     sub.add_parser("init", help="Initialize .mdfs directory")
 
     p_bundle = sub.add_parser("bundle", help="Bundle files into context.md")
-    p_bundle.add_argument("-f", "--files", nargs="+", required=True,
+    p_bundle.add_argument("files", nargs="+",
                           help="Project-relative file paths or directories")
     p_bundle.add_argument("-l", "--label", help="Label for the context file")
     p_bundle.add_argument("-s", "--system-prompt", help="System prompt file")
@@ -88,13 +88,14 @@ def main() -> None:
                           help="Include files that are in .gitignore")
 
     p_paste = sub.add_parser("paste", help="Save clipboard as response")
-    p_paste.add_argument("-l", "--label", help="Label for the response file")
+    p_paste.add_argument("label", nargs="?", default=None,
+                         help="Label for the response file (optional)")
     p_paste.add_argument("-x", "--extract", action="store_true",
                          help="Also extract files and apply patches")
     p_paste.add_argument("--dry-run", action="store_true")
 
     p_extract = sub.add_parser("extract", help="Extract files from Markdown")
-    p_extract.add_argument("-i", "--input", required=True,
+    p_extract.add_argument("input",
                            help="Input Markdown file")
     p_extract.add_argument("--dry-run", action="store_true")
     p_extract.add_argument("-f", "--force", action="store_true",
@@ -103,13 +104,12 @@ def main() -> None:
     sub.add_parser("log", help="Show chronological log")
 
     p_setup = sub.add_parser("setup", help="Install/uninstall shell completions")
-    p_setup_group = p_setup.add_mutually_exclusive_group(required=False)
-    p_setup_group.add_argument(
+    p_setup.add_argument(
         "-i", "--install-completions",
         action="store_true",
         help="Install shell completions for current shell",
     )
-    p_setup_group.add_argument(
+    p_setup.add_argument(
         "-u", "--uninstall-completions",
         action="store_true",
         help="Uninstall shell completions",
