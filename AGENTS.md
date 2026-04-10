@@ -114,26 +114,24 @@ class CommandNameCommand:
 
 ### Available Commands
 
-#### `mdfs init` — Initialize Project
+#### `mdfs init` — Initialize Project Configuration
 
 **Class**: `InitCommand` (`mdfs/commands/init.py`)
 
-**Purpose**: Create `.mdfs/` directory structure
+**Purpose**: Create `.mdfsrc.yaml` configuration file
 
 **Parameters**:
 - `-d, --dir` (optional): Project directory (default: current)
 
 **Creates**:
 ```
-.mdfs/
-├── .gitignore       # ignores contexts/ and responses/
-├── rules/           # directory for system prompt rules
-├── contexts/        # bundled files for LLM
-└── responses/       # LLM responses
+.mdfsrc.yaml        # Project configuration file
 ```
 
 **Notes**:
-- System prompt is NOT created on disk (use `mdfs rules` instead)
+- Only creates `.mdfsrc.yaml` configuration file
+- No directories are created by `init` — they are created automatically by `bundle`, `paste`, and other commands as needed
+- Users can customize directory paths in `.mdfsrc.yaml` before using other commands
 - Safe to run multiple times (idempotent)
 
 ---

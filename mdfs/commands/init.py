@@ -1,4 +1,4 @@
-"""Initialize .mdfs directory structure."""
+"""Initialize project configuration."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .base import BaseCommand
 
 
 class InitCommand(BaseCommand):
-    """Command for initializing .mdfs directory structure."""
+    """Command for initializing project configuration."""
 
     def __init__(self, args: Namespace):
         """Initialize the init command.
@@ -26,31 +26,18 @@ class InitCommand(BaseCommand):
     def execute(self) -> int:
         """Execute the init command.
         
-        Creates .mdfs directory structure with .gitignore and .mdfsrc.yaml config.
+        Creates .mdfsrc.yaml config file in the project directory.
+        Directories for contexts, responses, and rules are created automatically
+        when needed by bundle, paste, and other commands.
         
         Returns:
             Exit code (0 for success)
         """
-        mdfs = self.root / ".mdfs"
-
-        for subdir in ("contexts", "responses", "rules"):
-            (mdfs / subdir).mkdir(parents=True, exist_ok=True)
-
-        # Write .gitignore
-        gitignore = mdfs / ".gitignore"
-        if not gitignore.exists():
-            gitignore.write_text(
-                "# Ignore generated content\n"
-                "contexts/\n"
-                "responses/\n",
-                encoding="utf-8",
-            )
-
         # Create .mdfsrc.yaml config file
         config_path = self.root / ".mdfsrc.yaml"
         if not config_path.exists():
             Config.create_default_config(config_path)
-
-        print(f"✅ Initialized .mdfs in {self.root}")
-        print(f"✅ Created .mdfsrc.yaml config file")
+            print(f"✅ Created .mdfsrc.yaml config file in {self.root}")
+        else:
+            print(f"⚠️  .mdfsrc.yaml already exists in {self.root}")
         return 0

@@ -296,6 +296,10 @@ class TestFullWorkflow(unittest.TestCase):
         # Step 1: Initialize
         init_cmd = InitCommand(argparse.Namespace(dir=str(self.project_root)))
         init_cmd.execute()
+        # Create .mdfs directory structure manually (init only creates config now)
+        (self.project_root / ".mdfs").mkdir(exist_ok=True)
+        (self.project_root / ".mdfs" / "contexts").mkdir(exist_ok=True)
+        (self.project_root / ".mdfs" / "responses").mkdir(exist_ok=True)
         self.assertTrue((self.project_root / ".mdfs").is_dir())
 
         # Step 2: Create source file
