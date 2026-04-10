@@ -100,6 +100,58 @@ def get_clipboard() -> str:
     sys.exit(1)
 
 
+def copy_to_clipboard(text: str) -> None:
+    """Copy text to system clipboard.
+    
+    Supports macOS (pbcopy), Linux (wl-copy, xclip, xsel), and more.
+    
+    Args:
+        text: Text to copy to clipboard
+        
+    Raises:
+        SystemExit: If clipboard is not available on the system
+    """
+    system = platform.system()
+
+    if system == "Darwin":
+        if shutil.which("pbcopy"):
+            subprocess.run(
+                ["pbcopy"], input=text, text=True, check=True,
+            )
+            return
+        print("Error: pbcopy not found on macOS.", file=sys.stderr)
+        sys.exit(1)
+
+    if system == "Linux":
+        # Try Wayland first (wl-copy), then X11 tools (xclip, xsel)
+        commands = [
+            ("wl-copy", ["wl-copy"]),
+            ("xclip", ["xclip", "-selection", "clipboard"]),
+            ("xsel", ["xsel", "--clipboard", "--input"]),
+        ]
+
+        for name, cmd in commands:
+            if shutil.which(name):
+                try:
+                    subprocess.run(
+                        cmd, input=text, text=True, timeout=5, check=True,
+                    )
+                    return
+                except subprocess.TimeoutExpired:
+                    continue
+                except Exception:
+                    continue
+
+        print(
+            "Error: install wl-copy (Wayland) or xclip/xsel (X11) for clipboard support.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print(f"Error: clipboard not supported on {system}.", file=sys.stderr)
+    sys.exit(1)
+
+
 def find_mdfs_root(start: str | Path | None = None) -> Path:
     """Find the root directory containing .mdfs folder.
     

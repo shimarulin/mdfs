@@ -154,13 +154,15 @@ Creates:
 ```
 .mdfs/
 ├── .gitignore          # ignores contexts/ and responses/
-├── rules/
-│   └── mdfs-system.md  # LLM system prompt (auto-created)
+├── rules/              # directory for system prompt rules
 ├── contexts/           # bundled files for LLM
 └── responses/          # LLM responses
 ```
 
 **Why**: Sets up project structure for MDFS workflow. Safe to run multiple times.
+
+> **Note**: System prompt rules are not created as a file on disk.
+> Use `mdfs rules` to view and copy the system prompt to clipboard.
 
 ### `mdfs bundle`
 
@@ -232,6 +234,23 @@ mdfs extract response.md -f         # force overwrite all files
 - Without `--force`, prompts before overwriting existing files
 - Supports both full files and unified diff patches
 - Uses fuzzy matching for patches (line numbers are hints, context lines matter)
+
+### `mdfs rules`
+
+Display and copy system prompt rules to clipboard.
+
+```bash
+mdfs rules              # print rules to console and copy to clipboard
+```
+
+Prints the MDFS system prompt that instructs LLMs how to format files
+and patches. Automatically copies to clipboard for easy pasting into
+chat interfaces.
+
+**Usage notes:**
+- Output goes to stdout (can be piped or redirected)
+- Content is also copied to system clipboard
+- Useful when `.mdfs/rules/` directory exists but file is not on disk
 
 ### `mdfs log`
 
@@ -314,11 +333,11 @@ as long as the context lines are correct.
 
 ## System prompt
 
-`mdfs init` creates `.mdfs/rules/mdfs-system.md` — a system prompt that
-teaches the LLM to output files in MDFS format. The bundler automatically
-prepends it to every context file.
+The system prompt teaches the LLM to output files in MDFS format.
+The bundler automatically prepends it to every context file.
 
-You can customize it or replace it entirely.
+Use `mdfs rules` to view the system prompt and copy it to clipboard.
+You can also customize rules by placing files in `.mdfs/rules/`.
 
 ## Project layout with MDFS
 

@@ -7,6 +7,7 @@ Commands:
     paste    — create a response file from clipboard content
     extract  — write file blocks to disk, apply patch blocks
     log      — show chronological history
+    rules    — display and copy system prompt rules to clipboard
     setup    — install/uninstall shell completions
 """
 
@@ -23,6 +24,7 @@ from .commands import (
     InitCommand,
     LogCommand,
     PasteCommand,
+    RulesCommand,
     SetupCommand,
 )
 from .utils import timestamp
@@ -103,6 +105,8 @@ def main() -> None:
 
     sub.add_parser("log", help="Show chronological log")
 
+    sub.add_parser("rules", help="Display and copy system prompt rules")
+
     p_setup = sub.add_parser("setup", help="Install/uninstall shell completions")
     p_setup.add_argument(
         "-i", "--install-completions",
@@ -128,6 +132,7 @@ def main() -> None:
         "paste": PasteCommand,
         "extract": ExtractCommand,
         "log": LogCommand,
+        "rules": RulesCommand,
         "setup": SetupCommand,
     }
 

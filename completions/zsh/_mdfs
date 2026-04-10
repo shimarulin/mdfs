@@ -8,6 +8,7 @@ _mdfs() {
         'paste:Save clipboard as response, optionally extract files'
         'extract:Extract files and apply patches from Markdown'
         'log:Show chronological log of contexts and responses'
+        'rules:Display and copy system prompt rules to clipboard'
     )
 
     _arguments -C \
@@ -23,6 +24,7 @@ _mdfs() {
         args)
             case "$words[1]" in
                 init) ;;
+                rules) ;;
                 bundle)
                     _arguments \
                         '-f[Files to include]:*:file:_files' \

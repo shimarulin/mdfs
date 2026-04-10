@@ -25,7 +25,7 @@ class InitCommand(BaseCommand):
     def execute(self) -> int:
         """Execute the init command.
         
-        Creates .mdfs directory structure with rules and .gitignore.
+        Creates .mdfs directory structure with .gitignore.
         
         Returns:
             Exit code (0 for success)
@@ -34,14 +34,6 @@ class InitCommand(BaseCommand):
 
         for subdir in ("rules", "contexts", "responses"):
             (mdfs / subdir).mkdir(parents=True, exist_ok=True)
-
-        # Write default system prompt
-        prompt_path = mdfs / "rules" / "mdfs-system.md"
-        if not prompt_path.exists():
-            from ..default_system_prompt import DEFAULT_SYSTEM_PROMPT
-
-            prompt_path.write_text(DEFAULT_SYSTEM_PROMPT, encoding="utf-8")
-            print(f"  📝 Created {prompt_path.relative_to(self.root)}")
 
         # Write .gitignore
         gitignore = mdfs / ".gitignore"
