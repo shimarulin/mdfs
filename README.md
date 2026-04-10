@@ -200,9 +200,10 @@ MDFS extends the system prompt by loading markdown files from extension director
 This allows you to add custom rules and instructions for the LLM.
 
 **Built-in behavior:**
-- `.mdfs/rules/` directory is **automatically loaded** if it exists (created by `mdfs init`)
+- `.mdfs/rules/` directory is **automatically loaded** if it exists
 - This is the default place for system prompt rules
 - Always loaded first, before any other extensions
+- Can be created manually: `mkdir -p .mdfs/rules` and add to `.gitignore`
 
 **How to customize prompt rules:**
 
@@ -259,7 +260,7 @@ Result: system.md + custom.md + docs/prompts/* + tmp/*
 
 ### `mdfs init`
 
-Create `.mdfs/` directory structure in the current project.
+Create `.mdfsrc.yaml` configuration file in the current project.
 
 ```bash
 mdfs init                   # initialize in current directory
@@ -268,14 +269,15 @@ mdfs init -d /path/to/proj  # initialize in specific directory
 
 Creates:
 ```
-.mdfs/
-├── .gitignore          # ignores contexts/ and responses/
-├── rules/              # directory for system prompt rules
-├── contexts/           # bundled files for LLM
-└── responses/          # LLM responses
+.mdfsrc.yaml                # Configuration file with default paths
 ```
 
-**Why**: Sets up project structure for MDFS workflow. Safe to run multiple times.
+**Why**: Sets up configuration for MDFS workflow. Safe to run multiple times.
+
+**How directories are created:**
+- `.mdfs/`, `.mdfs/contexts/`, `.mdfs/responses/` are created **automatically** when you first use `mdfs bundle`, `mdfs paste`, or `mdfs log`
+- Alternatively, you can create them manually: `mkdir -p .mdfs/{contexts,responses,rules}`
+- Add to `.gitignore`: `echo ".mdfs/contexts\n.mdfs/responses" >> .gitignore`
 
 > **Note**: System prompt rules are not created as a file on disk.
 > Use `mdfs rules` to view and copy the system prompt to clipboard.
