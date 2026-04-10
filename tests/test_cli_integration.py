@@ -525,9 +525,9 @@ class TestFindMdfsRoot(unittest.TestCase):
         self.assertEqual(result, Path(self.tmpdir).resolve())
 
     def test_find_mdfs_root_not_found(self):
-        """Test error when .mdfs not found."""
-        with self.assertRaises(SystemExit):
-            find_mdfs_root(self.tmpdir)
+        """Test returns start dir when .mdfs not found."""
+        result = find_mdfs_root(self.tmpdir)
+        self.assertEqual(result, Path(self.tmpdir).resolve())
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)

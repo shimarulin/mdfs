@@ -194,13 +194,13 @@ class TestFindMdfsRoot(unittest.TestCase):
         result = find_mdfs_root(deep_dir)
         self.assertEqual(result, Path(self.tmpdir).resolve())
 
-    def test_not_found_raises_system_exit(self):
-        """Test SystemExit when .mdfs not found."""
+    def test_not_found_returns_start_dir(self):
+        """Test returns start directory when .mdfs not found."""
         subdir = Path(self.tmpdir) / "sub"
         subdir.mkdir()
 
-        with self.assertRaises(SystemExit):
-            find_mdfs_root(subdir)
+        result = find_mdfs_root(subdir)
+        self.assertEqual(result, subdir.resolve())
 
     def test_uses_current_dir_when_none(self):
         """Test uses current working directory when start is None."""

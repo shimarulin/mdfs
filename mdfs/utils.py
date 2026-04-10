@@ -158,18 +158,17 @@ def copy_to_clipboard(text: str) -> None:
 
 
 def find_mdfs_root(start: str | Path | None = None) -> Path:
-    """Find the root directory containing .mdfs folder.
+    """Find the project root directory.
     
-    Searches upward from the starting directory until .mdfs is found.
+    Searches upward from the starting directory looking for .mdfs directory.
+    If .mdfs is not found, returns the starting directory (which allows
+    commands to create .mdfs automatically).
     
     Args:
         start: Starting directory (default: current working directory)
         
     Returns:
-        Path to the project root containing .mdfs
-        
-    Raises:
-        SystemExit: If .mdfs directory is not found
+        Path to the project root (either containing .mdfs, or the starting directory)
     """
     current = Path(start) if start else Path.cwd()
     current = current.resolve()
@@ -178,11 +177,10 @@ def find_mdfs_root(start: str | Path | None = None) -> Path:
             return current
         parent = current.parent
         if parent == current:
-            print(
-                "Error: .mdfs directory not found. Run `mdfs init` first.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            # Reached filesystem root without finding .mdfs
+            # Return the original starting directory to allow commands
+            # to create .mdfs automatically
+            return (Path(start) if start else Path.cwd()).resolve()
         current = parent
 
 
