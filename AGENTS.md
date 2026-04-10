@@ -277,6 +277,7 @@ responses_dir: ".mdfs/responses"
 
 # Directories containing .md files for system prompt extensions
 # Files are loaded alphabetically, joined with blank lines
+# NOTE: .mdfs/rules/ is always included by default (if it exists)
 prompt_extensions:
   - ".mdfs/extensions"
   - "docs/mdfs-prompts"
@@ -288,6 +289,40 @@ prompt_extensions:
 2. Customize paths as needed
 3. Add markdown files to `prompt_extensions` directories
 4. Files are automatically loaded and appended to system prompt
+
+### Prompt Extensions Priority (Cumulative)
+
+Prompt extensions are loaded in this order (**all are included, not replaced**):
+
+1. **Built-in (.mdfs/rules/)**: Default directory created by `mdfs init`
+   - Automatically loaded if directory exists
+   - Always included first
+   
+2. **Configuration (.mdfsrc.yaml)**: User-defined directories
+   - Appended to built-in extensions
+   - Can add custom prompt rules
+   
+3. **Command-line Overrides (--prompt-extensions-dir)**: CLI flags
+   - Appended to configuration extensions
+   - Useful for temporary additions
+
+**Example flow:**
+```
+.mdfs/rules/          → Always loaded (built-in)
+  ├── prompt1.md
+  └── prompt2.md
+
+.mdfsrc.yaml:
+  prompt_extensions:
+    - "docs/custom"   → Loaded after built-in
+
+mdfs bundle src/ --prompt-extensions-dir "./tmp"
+                      → Loaded last (CLI override)
+
+Result: prompt1.md + prompt2.md + docs/custom/* + ./tmp/*
+```
+
+**No duplicates**: If same directory appears in multiple levels, it's loaded only once (first occurrence).
 
 ### Configuration Class
 
@@ -444,6 +479,39 @@ tests/
 ---
 
 ## Code Style & Conventions
+
+### Naming Conventions
+
+#### Filename Format for Contexts and Responses
+
+All bundled context files and response files follow this format:
+
+```
+YYYY-MM-DD_HHMMSS__Readable_label.md
+```
+
+**Examples**:
+- `2026-04-09_204748__Система_заметок.md` (Russian)
+- `2026-04-09_143022__Настройка_WireGuard.md` (Russian)
+- `2026-04-10_091500__Initial_setup.md` (English)
+
+**Rules**:
+- **Timestamp**: `YYYY-MM-DD_HHMMSS` format (no colons for Windows/Android compatibility)
+- **Separator**: Double underscore `__` between timestamp and label
+- **Label**: Human-readable name for the file
+  - First letter is capitalized (e.g., `Initial_setup`, not `initial_setup`)
+  - Remaining letters are lowercase
+  - Spaces replaced with underscores
+  - Special characters removed
+  - Language: Use original language (Russian, English, etc.)
+- **Extension**: Always `.md`
+
+**Empty Labels**: If no label is provided or label contains only special characters, filename is timestamp only: `YYYY-MM-DD_HHMMSS.md`
+
+**Implementation**: `mdfs/utils.py` provides:
+- `timestamp()` — Generate timestamp in `YYYY-MM-DD_HHMMSS` format
+- `sanitize_label(label)` — Sanitize label with capitalization rules
+- `make_filename(label)` — Generate complete filename with timestamp and optional label
 
 ### Python Style
 - **Format**: Follow PEP 8

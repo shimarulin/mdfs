@@ -54,7 +54,7 @@ class TestBundleCommand(unittest.TestCase):
         # Check that context file was created
         contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
         self.assertEqual(len(contexts), 1)
-        self.assertIn("initial_setup", contexts[0].name)
+        self.assertIn("Initial_setup", contexts[0].name)
 
         # Check content
         content = contexts[0].read_text(encoding="utf-8")
@@ -243,7 +243,7 @@ class TestPasteCommand(unittest.TestCase):
         # Check response file was created
         responses = list((self.project_root / ".mdfs" / "responses").glob("*.md"))
         self.assertEqual(len(responses), 1)
-        self.assertIn("response1", responses[0].name)
+        self.assertIn("Response1", responses[0].name)
 
     @patch("mdfs.utils.get_clipboard")
     def test_paste_and_extract(self, mock_clipboard):
@@ -406,7 +406,7 @@ class TestMakeFilename(unittest.TestCase):
     def test_make_filename_with_label(self):
         """Test filename generation with label."""
         result = make_filename("test label")
-        self.assertIn("__test_label.md", result)
+        self.assertIn("__Test_label.md", result)
 
     def test_make_filename_without_label(self):
         """Test filename generation without label."""

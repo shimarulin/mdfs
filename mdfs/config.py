@@ -142,6 +142,9 @@ class Config:
         appended to the system prompt. Directories are resolved relative to
         the configuration file directory.
         
+        By default, includes .mdfs/rules/ if it exists (built-in extensions).
+        Configuration and command-line overrides are appended (cumulative).
+        
         Args:
             base_dir: Base directory for relative paths (defaults to config directory)
             
@@ -151,19 +154,31 @@ class Config:
         if base_dir is None:
             base_dir = self.config_path.parent if self.config_path else Path.cwd()
 
-        extensions_config = self.config_data.get("prompt_extensions", [])
-        if not extensions_config:
-            return []
-
-        if not isinstance(extensions_config, list):
-            extensions_config = [extensions_config]
-
         result: list[Path] = []
-        for ext_dir in extensions_config:
-            path = Path(ext_dir)
-            if not path.is_absolute():
-                path = base_dir / path
-            result.append(path.resolve())
+        seen: set[Path] = set()
+
+        # Step 1: Add built-in .mdfs/rules/ directory (always first)
+        default_rules_dir = base_dir / ".mdfs" / "rules"
+        if default_rules_dir.exists():
+            resolved = default_rules_dir.resolve()
+            if resolved not in seen:
+                result.append(resolved)
+                seen.add(resolved)
+
+        # Step 2: Add extensions from configuration file
+        extensions_config = self.config_data.get("prompt_extensions", [])
+        if extensions_config:
+            if not isinstance(extensions_config, list):
+                extensions_config = [extensions_config]
+
+            for ext_dir in extensions_config:
+                path = Path(ext_dir)
+                if not path.is_absolute():
+                    path = base_dir / path
+                resolved = path.resolve()
+                if resolved not in seen:
+                    result.append(resolved)
+                    seen.add(resolved)
 
         return result
 

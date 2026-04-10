@@ -194,6 +194,65 @@ prompt_extensions:
 - Extension files are sorted alphabetically within each directory
 - Non-existent extension directories are silently skipped
 
+### Prompt Extensions (System Prompt Rules)
+
+MDFS extends the system prompt by loading markdown files from extension directories.
+This allows you to add custom rules and instructions for the LLM.
+
+**Built-in behavior:**
+- `.mdfs/rules/` directory is **automatically loaded** if it exists (created by `mdfs init`)
+- This is the default place for system prompt rules
+- Always loaded first, before any other extensions
+
+**How to customize prompt rules:**
+
+1. Create markdown files in `.mdfs/rules/`:
+   ```bash
+   mkdir -p .mdfs/rules
+   echo "# Custom LLM Instructions" > .mdfs/rules/custom_rules.md
+   ```
+
+2. Add additional extension directories in `.mdfsrc.yaml`:
+   ```yaml
+   prompt_extensions:
+     - ".mdfs/extensions"    # additional rules
+     - "docs/mdfs-prompts"   # team documentation
+   ```
+
+3. Or use CLI flags for temporary additions:
+   ```bash
+   mdfs bundle src/ --prompt-extensions-dir ./temp-prompts
+   ```
+
+**Loading priority (cumulative — all are included):**
+
+1. **Built-in (.mdfs/rules/)** — Always loaded first (if exists)
+2. **Configuration (.mdfsrc.yaml)** — Appended to built-in rules
+3. **Command-line (--prompt-extensions-dir)** — Appended last
+
+**Example:**
+```
+.mdfs/rules/
+├── system.md           → loaded first
+└── custom.md           → loaded second
+
+.mdfsrc.yaml:
+  prompt_extensions:
+    - docs/prompts     → loaded third
+
+mdfs bundle src/ --prompt-extensions-dir ./tmp
+                       → loaded fourth
+
+Result: system.md + custom.md + docs/prompts/* + tmp/*
+```
+
+**Notes:**
+- Files are loaded alphabetically within each directory
+- Extensions are joined with blank lines
+- Duplicate directories are included only once
+- Non-existent directories are silently skipped
+- Use this feature to add team guidelines, coding standards, or LLM-specific instructions
+
 ---
 
 ## Commands

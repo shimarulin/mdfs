@@ -33,7 +33,7 @@ class InitCommand(BaseCommand):
         """
         mdfs = self.root / ".mdfs"
 
-        for subdir in ("contexts", "responses"):
+        for subdir in ("contexts", "responses", "rules"):
             (mdfs / subdir).mkdir(parents=True, exist_ok=True)
 
         # Write .gitignore

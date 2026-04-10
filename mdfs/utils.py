@@ -19,14 +19,19 @@ def timestamp() -> str:
 def sanitize_label(label: str) -> str:
     """Sanitize a label for use in filenames.
     
-    Converts to lowercase, replaces spaces with underscores,
-    removes invalid characters, and collapses multiple underscores.
+    Replaces spaces with underscores, removes invalid characters,
+    collapses multiple underscores, and capitalizes the first letter.
     """
-    label = label.strip().lower()
+    label = label.strip()
     label = label.replace(" ", "_")
     label = re.sub(r"[^\w\-]", "", label)
     label = re.sub(r"_+", "_", label)
-    label = label.strip("_")
+    label = label.strip("_").lower()
+    
+    # Capitalize first letter
+    if label:
+        label = label[0].upper() + label[1:]
+    
     return label
 
 
