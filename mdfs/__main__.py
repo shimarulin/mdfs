@@ -74,6 +74,20 @@ def main() -> None:
         "-d", "--dir", default=".",
         help="Project directory (default: current)",
     )
+    parser.add_argument(
+        "--contexts-dir",
+        help="Override contexts directory (overrides .mdfsrc.yaml)",
+    )
+    parser.add_argument(
+        "--responses-dir",
+        help="Override responses directory (overrides .mdfsrc.yaml)",
+    )
+    parser.add_argument(
+        "--prompt-extensions-dir",
+        action="append",
+        dest="prompt_extensions_dirs",
+        help="Add/override prompt extension directories (can be used multiple times)",
+    )
     sub = parser.add_subparsers(dest="command", required=False)
 
     sub.add_parser("init", help="Initialize .mdfs directory")

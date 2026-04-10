@@ -17,7 +17,7 @@ _mdfs() {
 
     if [[ -z "$cmd" ]]; then
         if [[ "$cur" == -* ]]; then
-            COMPREPLY=($(compgen -W "-d --dir" -- "$cur"))
+            COMPREPLY=($(compgen -W "-d --dir --contexts-dir --responses-dir --prompt-extensions-dir" -- "$cur"))
         else
             COMPREPLY=($(compgen -W "$commands" -- "$cur"))
         fi
@@ -29,22 +29,22 @@ _mdfs() {
         rules) ;;
         bundle)
             case "$prev" in
-                -f|--files|-s|--system-prompt|-o|--output) _filedir; return ;;
+                -f|--files|-s|--system-prompt|-o|--output|--contexts-dir|--prompt-extensions-dir) _filedir; return ;;
                 -l|--label) return ;;
             esac
-            COMPREPLY=($(compgen -W "-f --files -l --label -s --system-prompt -o --output" -- "$cur"))
+            COMPREPLY=($(compgen -W "-f --files -l --label -s --system-prompt -o --output --contexts-dir --responses-dir --prompt-extensions-dir" -- "$cur"))
             ;;
         paste)
             case "$prev" in
-                -l|--label) return ;;
+                -l|--label|--responses-dir|--prompt-extensions-dir) return ;;
             esac
-            COMPREPLY=($(compgen -W "-l --label -x --extract --dry-run" -- "$cur"))
+            COMPREPLY=($(compgen -W "-l --label -x --extract --dry-run --contexts-dir --responses-dir --prompt-extensions-dir" -- "$cur"))
             ;;
         extract)
             case "$prev" in
-                -i|--input) _filedir; return ;;
+                -i|--input|--contexts-dir|--responses-dir|--prompt-extensions-dir) _filedir; return ;;
             esac
-            COMPREPLY=($(compgen -W "-i --input --dry-run" -- "$cur"))
+            COMPREPLY=($(compgen -W "-i --input --dry-run --contexts-dir --responses-dir --prompt-extensions-dir" -- "$cur"))
             ;;
         log) ;;
     esac

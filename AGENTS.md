@@ -44,6 +44,7 @@ This document serves as the architectural reference and maintenance guide for th
 mdfs/
 ├── __main__.py              # CLI entry point, argument parser
 ├── __init__.py              # Package initialization
+├── config.py                # Configuration management (NEW)
 ├── default_system_prompt.py # DEFAULT_SYSTEM_PROMPT constant
 ├── utils.py                 # Utility functions (clipboard, validation, etc.)
 ├── commands/                # Command implementations
@@ -53,7 +54,7 @@ mdfs/
 │   ├── paste.py            # Save and extract from clipboard
 │   ├── extract.py          # Extract files from Markdown
 │   ├── log.py              # Show history of contexts/responses
-│   ├── rules.py            # Display system prompt (NEW)
+│   ├── rules.py            # Display system prompt
 │   └── setup.py            # Shell setup and completions
 └── core/                   # Core functionality modules
     ├── __init__.py
@@ -254,6 +255,73 @@ class CommandNameCommand:
 
 ---
 
+## Configuration System
+
+### Overview
+
+MDFS now supports configuration via `.mdfsrc.yaml` file, allowing users to:
+- Customize `contexts_dir` and `responses_dir` paths
+- Define directories with markdown files for system prompt extensions
+- Work with non-standard project structures
+
+The configuration file is searched starting from the current working directory upward to the filesystem root.
+
+### `.mdfsrc.yaml` Format
+
+```yaml
+# Directory for bundled context files (default: .mdfs/contexts)
+contexts_dir: ".mdfs/contexts"
+
+# Directory for LLM response files (default: .mdfs/responses)
+responses_dir: ".mdfs/responses"
+
+# Directories containing .md files for system prompt extensions
+# Files are loaded alphabetically, joined with blank lines
+prompt_extensions:
+  - ".mdfs/extensions"
+  - "docs/mdfs-prompts"
+```
+
+### Usage
+
+1. Create `.mdfsrc.yaml` in project root (or run `mdfs init`)
+2. Customize paths as needed
+3. Add markdown files to `prompt_extensions` directories
+4. Files are automatically loaded and appended to system prompt
+
+### Configuration Class
+
+**Location**: `mdfs/config.py`
+
+**Key Methods**:
+- `Config()` — Load config from `.mdfsrc.yaml`
+- `get_contexts_dir(base_dir)` — Get contexts directory path
+- `get_responses_dir(base_dir)` — Get responses directory path
+- `get_prompt_extensions_dirs(base_dir)` — Get list of extension directories
+- `load_prompt_extensions(base_dir)` — Load and concatenate extension files
+- `is_configured()` — Check if config file exists
+- `create_default_config(path)` — Create default `.mdfsrc.yaml`
+- `override(contexts_dir, responses_dir, prompt_extensions_dirs)` — Override config with command-line arguments (takes precedence over `.mdfsrc.yaml`)
+
+### Command-line Config Overrides
+
+All commands support global flags to override configuration values (take precedence over `.mdfsrc.yaml`):
+
+- `--contexts-dir PATH` — Override contexts directory
+- `--responses-dir PATH` — Override responses directory
+- `--prompt-extensions-dir PATH` — Add/override prompt extension directories (can be used multiple times)
+
+**Example usage:**
+```bash
+mdfs bundle src/ --contexts-dir ./my-contexts
+mdfs paste label --responses-dir ./my-responses -x
+mdfs log --contexts-dir ./my-contexts
+```
+
+Overrides are applied in `BaseCommand.apply_config_overrides()` method, which is called by commands after loading configuration.
+
+---
+
 ## Utility Functions
 
 All utilities are in `mdfs/utils.py`. Public functions:
@@ -413,14 +481,16 @@ AGENTS.md **must be updated** whenever any of the following occur:
 - **Removing** a command: Remove from Commands Reference and __main__.py
 
 **Also update**:
-- `completions/bash/mdfs`
-- `completions/zsh/_mdfs`
-- `README.md`
+- `completions/bash/mdfs` — Add command and its flags
+- `completions/zsh/_mdfs` — Add command and its flags with descriptions
+- `README.md` — Document command for users
 
-#### 2. Function Changes
+#### 2. Function & Configuration Changes
 - **Adding** a public function in utils.py or core modules: Add to Utility Functions
 - **Modifying** function signature: Update parameters and behavior
 - **Removing** a function: Remove from Utility Functions section
+- **Adding** configuration options: Update Configuration System section in AGENTS.md and README.md
+- **Adding** global command-line flags: Update all commands in `completions/bash/mdfs` and `completions/zsh/_mdfs`
 
 #### 3. Architecture Changes
 - **Adding** new module: Update Architecture section
@@ -432,7 +502,9 @@ AGENTS.md **must be updated** whenever any of the following occur:
 - ✅ Update AGENTS.md accordingly
 - ✅ Add/update tests
 - ✅ Update README if user-facing
-- ✅ Update shell completions if command added/modified
+- ✅ Update shell completions if command added/modified:
+  - `completions/bash/mdfs` — Bash completion script
+  - `completions/zsh/_mdfs` — Zsh completion script
 
 ### Maintenance Checklist
 
@@ -453,18 +525,27 @@ Before committing changes:
 2. Register in `mdfs/__main__.py` (add to parser and commands dict)
 3. Update `mdfs/commands/__init__.py` to export class
 4. Add to AGENTS.md Commands Reference section
-5. Update `completions/bash/mdfs`
-6. Update `completions/zsh/_mdfs`
-7. Update README.md
+5. Add command and flags to `completions/bash/mdfs`
+6. Add command and flags to `completions/zsh/_mdfs` with descriptions
+7. Update README.md with command documentation
 8. Add tests in `tests/test_newcommand.py`
 
 **Modifying existing command**:
 1. Edit `mdfs/commands/commandname.py`
 2. Update AGENTS.md Commands Reference section
-3. Update `completions/bash/mdfs` if parameters changed
-4. Update `completions/zsh/_mdfs` if parameters changed
+3. Update `completions/bash/mdfs` if parameters changed (add new flags)
+4. Update `completions/zsh/_mdfs` if parameters changed (add new flags with descriptions)
 5. Update README.md if user-facing changes
 6. Update/add tests in `tests/test_<command>.py`
+
+**Adding global flags** (e.g., `--contexts-dir`):
+1. Add flag definition in `mdfs/__main__.py` parser
+2. Document in AGENTS.md Configuration System section
+3. Add to all relevant command classes in `mdfs/commands/`
+4. Update all commands in `completions/bash/mdfs` to include new global flags
+5. Update all commands in `completions/zsh/_mdfs` to include new global flags with descriptions
+6. Document in README.md Configuration section
+7. Add tests for new override functionality
 
 **Adding utility function**:
 1. Add to `mdfs/utils.py`

@@ -139,6 +139,63 @@ mdfs log
 #   📋 response  2026-04-04_144500__add_auth_module
 ```
 
+## Configuration
+
+MDFS supports optional configuration via `.mdfsrc.yaml` file, allowing you to:
+- Use custom directories for bundled contexts and LLM responses
+- Define markdown files to extend the system prompt
+- Work with non-standard project structures
+
+### Configuration File (`.mdfsrc.yaml`)
+
+The configuration file is automatically searched starting from your current directory and moving up to the filesystem root.
+
+**Command-line overrides**: You can override configuration values using global flags that take precedence over `.mdfsrc.yaml`:
+
+```bash
+mdfs bundle src/ --contexts-dir ./my-contexts
+mdfs paste response --responses-dir ./my-responses -x
+mdfs log --contexts-dir ./my-contexts
+mdfs bundle src/ --prompt-extensions-dir ./.mdfs/extra-prompts --prompt-extensions-dir ./docs/prompts
+```
+
+| Flag | Description |
+|------|-------------|
+| `--contexts-dir` | Override contexts directory path |
+| `--responses-dir` | Override responses directory path |
+| `--prompt-extensions-dir` | Add/override prompt extension directories (can be used multiple times) |
+
+**Example `.mdfsrc.yaml`:**
+
+```yaml
+# Directory for bundled context files (default: .mdfs/contexts)
+contexts_dir: ".mdfs/contexts"
+
+# Directory for LLM response files (default: .mdfs/responses)  
+responses_dir: ".mdfs/responses"
+
+# Directories containing markdown files to extend the system prompt
+# Files are loaded alphabetically and joined with blank lines
+prompt_extensions:
+  - ".mdfs/extensions"
+  - "docs/mdfs-prompts"
+```
+
+### Using Configuration
+
+1. **Create config**: Run `mdfs init` to create a default `.mdfsrc.yaml`
+2. **Customize paths**: Edit `contexts_dir` and `responses_dir` as needed
+3. **Add prompt extensions**: Place markdown files in configured `prompt_extensions` directories
+4. **Auto-loading**: MDFS automatically loads and uses the configuration
+
+**Notes:**
+- Configuration is optional — MDFS works fine with defaults
+- Paths can be relative (relative to config file) or absolute
+- Extension files are sorted alphabetically within each directory
+- Non-existent extension directories are silently skipped
+
+---
+
 ## Commands
 
 ### `mdfs init`
