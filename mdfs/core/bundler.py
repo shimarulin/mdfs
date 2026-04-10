@@ -136,6 +136,7 @@ def bundle(
     include_preamble: bool = True,
     respect_gitignore: bool = True,
     interactive: bool = True,
+    prompt_extensions: str | None = None,
 ) -> str:
     """Bundle project files into a single Markdown document.
     
@@ -147,6 +148,7 @@ def bundle(
         include_preamble: Whether to include mandatory format rules preamble
         respect_gitignore: Whether to respect .gitignore (default: True)
         interactive: Whether to ask for confirmation on ignored files
+        prompt_extensions: Optional extensions to append after DEFAULT_SYSTEM_PROMPT
         
     Returns:
         Bundled markdown document as string
@@ -172,6 +174,12 @@ def bundle(
         parts.append("--- START OF RULES ---")
         parts.append("")
         parts.append(DEFAULT_SYSTEM_PROMPT.rstrip())
+        
+        # Add prompt extensions if provided
+        if prompt_extensions and prompt_extensions.strip():
+            parts.append("")
+            parts.append(prompt_extensions.rstrip())
+        
         parts.append("")
         parts.append("--- END OF RULES ---")
         parts.append("")

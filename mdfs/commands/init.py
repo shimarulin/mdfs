@@ -1,4 +1,4 @@
-"""Initialize .mdfs directory structure."""
+"""Initialize project configuration."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ import sys
 from argparse import Namespace
 from pathlib import Path
 
+from ..config import Config
 from .base import BaseCommand
 
 
 class InitCommand(BaseCommand):
-    """Command for initializing .mdfs directory structure."""
+    """Command for initializing project configuration."""
 
     def __init__(self, args: Namespace):
         """Initialize the init command.
@@ -25,33 +26,18 @@ class InitCommand(BaseCommand):
     def execute(self) -> int:
         """Execute the init command.
         
-        Creates .mdfs directory structure with rules and .gitignore.
+        Creates .mdfsrc.yaml config file in the project directory.
+        Directories for contexts, responses, and rules are created automatically
+        when needed by bundle, paste, and other commands.
         
         Returns:
             Exit code (0 for success)
         """
-        mdfs = self.root / ".mdfs"
-
-        for subdir in ("rules", "contexts", "responses"):
-            (mdfs / subdir).mkdir(parents=True, exist_ok=True)
-
-        # Write default system prompt
-        prompt_path = mdfs / "rules" / "mdfs-system.md"
-        if not prompt_path.exists():
-            from ..default_system_prompt import DEFAULT_SYSTEM_PROMPT
-
-            prompt_path.write_text(DEFAULT_SYSTEM_PROMPT, encoding="utf-8")
-            print(f"  📝 Created {prompt_path.relative_to(self.root)}")
-
-        # Write .gitignore
-        gitignore = mdfs / ".gitignore"
-        if not gitignore.exists():
-            gitignore.write_text(
-                "# Keep rules in git, ignore generated content\n"
-                "contexts/\n"
-                "responses/\n",
-                encoding="utf-8",
-            )
-
-        print(f"✅ Initialized .mdfs in {self.root}")
+        # Create .mdfsrc.yaml config file
+        config_path = self.root / ".mdfsrc.yaml"
+        if not config_path.exists():
+            Config.create_default_config(config_path)
+            print(f"✅ Created .mdfsrc.yaml config file in {self.root}")
+        else:
+            print(f"⚠️  .mdfsrc.yaml already exists in {self.root}")
         return 0

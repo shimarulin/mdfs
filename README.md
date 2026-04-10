@@ -139,11 +139,128 @@ mdfs log
 #   📋 response  2026-04-04_144500__add_auth_module
 ```
 
+## Configuration
+
+MDFS supports optional configuration via `.mdfsrc.yaml` file, allowing you to:
+- Use custom directories for bundled contexts and LLM responses
+- Define markdown files to extend the system prompt
+- Work with non-standard project structures
+
+### Configuration File (`.mdfsrc.yaml`)
+
+The configuration file is automatically searched starting from your current directory and moving up to the filesystem root.
+
+**Command-line overrides**: You can override configuration values using global flags that take precedence over `.mdfsrc.yaml`:
+
+```bash
+mdfs bundle src/ --contexts-dir ./my-contexts
+mdfs paste response --responses-dir ./my-responses -x
+mdfs log --contexts-dir ./my-contexts
+mdfs bundle src/ --prompt-extensions-dir ./.mdfs/extra-prompts --prompt-extensions-dir ./docs/prompts
+```
+
+| Flag | Description |
+|------|-------------|
+| `--contexts-dir` | Override contexts directory path |
+| `--responses-dir` | Override responses directory path |
+| `--prompt-extensions-dir` | Add/override prompt extension directories (can be used multiple times) |
+
+**Example `.mdfsrc.yaml`:**
+
+```yaml
+# Directory for bundled context files (default: .mdfs/contexts)
+contexts_dir: ".mdfs/contexts"
+
+# Directory for LLM response files (default: .mdfs/responses)  
+responses_dir: ".mdfs/responses"
+
+# Directories containing markdown files to extend the system prompt
+# Files are loaded alphabetically and joined with blank lines
+prompt_extensions:
+  - ".mdfs/extensions"
+  - "docs/mdfs-prompts"
+```
+
+### Using Configuration
+
+1. **Create config**: Run `mdfs init` to create a default `.mdfsrc.yaml`
+2. **Customize paths**: Edit `contexts_dir` and `responses_dir` as needed
+3. **Add prompt extensions**: Place markdown files in configured `prompt_extensions` directories
+4. **Auto-loading**: MDFS automatically loads and uses the configuration
+
+**Notes:**
+- Configuration is optional — MDFS works fine with defaults
+- Paths can be relative (relative to config file) or absolute
+- Extension files are sorted alphabetically within each directory
+- Non-existent extension directories are silently skipped
+
+### Prompt Extensions (System Prompt Rules)
+
+MDFS extends the system prompt by loading markdown files from extension directories.
+This allows you to add custom rules and instructions for the LLM.
+
+**Built-in behavior:**
+- `.mdfs/rules/` directory is **automatically loaded** if it exists
+- This is the default place for system prompt rules
+- Always loaded first, before any other extensions
+- Can be created manually: `mkdir -p .mdfs/rules` and add to `.gitignore`
+
+**How to customize prompt rules:**
+
+1. Create markdown files in `.mdfs/rules/`:
+   ```bash
+   mkdir -p .mdfs/rules
+   echo "# Custom LLM Instructions" > .mdfs/rules/custom_rules.md
+   ```
+
+2. Add additional extension directories in `.mdfsrc.yaml`:
+   ```yaml
+   prompt_extensions:
+     - ".mdfs/extensions"    # additional rules
+     - "docs/mdfs-prompts"   # team documentation
+   ```
+
+3. Or use CLI flags for temporary additions:
+   ```bash
+   mdfs bundle src/ --prompt-extensions-dir ./temp-prompts
+   ```
+
+**Loading priority (cumulative — all are included):**
+
+1. **Built-in (.mdfs/rules/)** — Always loaded first (if exists)
+2. **Configuration (.mdfsrc.yaml)** — Appended to built-in rules
+3. **Command-line (--prompt-extensions-dir)** — Appended last
+
+**Example:**
+```
+.mdfs/rules/
+├── system.md           → loaded first
+└── custom.md           → loaded second
+
+.mdfsrc.yaml:
+  prompt_extensions:
+    - docs/prompts     → loaded third
+
+mdfs bundle src/ --prompt-extensions-dir ./tmp
+                       → loaded fourth
+
+Result: system.md + custom.md + docs/prompts/* + tmp/*
+```
+
+**Notes:**
+- Files are loaded alphabetically within each directory
+- Extensions are joined with blank lines
+- Duplicate directories are included only once
+- Non-existent directories are silently skipped
+- Use this feature to add team guidelines, coding standards, or LLM-specific instructions
+
+---
+
 ## Commands
 
 ### `mdfs init`
 
-Create `.mdfs/` directory structure in the current project.
+Create `.mdfsrc.yaml` configuration file in the current project.
 
 ```bash
 mdfs init                   # initialize in current directory
@@ -152,15 +269,18 @@ mdfs init -d /path/to/proj  # initialize in specific directory
 
 Creates:
 ```
-.mdfs/
-├── .gitignore          # ignores contexts/ and responses/
-├── rules/
-│   └── mdfs-system.md  # LLM system prompt (auto-created)
-├── contexts/           # bundled files for LLM
-└── responses/          # LLM responses
+.mdfsrc.yaml                # Configuration file with default paths
 ```
 
-**Why**: Sets up project structure for MDFS workflow. Safe to run multiple times.
+**Why**: Sets up configuration for MDFS workflow. Safe to run multiple times.
+
+**How directories are created:**
+- `.mdfs/`, `.mdfs/contexts/`, `.mdfs/responses/` are created **automatically** when you first use `mdfs bundle`, `mdfs paste`, or `mdfs log`
+- Alternatively, you can create them manually: `mkdir -p .mdfs/{contexts,responses,rules}`
+- Add to `.gitignore`: `echo ".mdfs/contexts\n.mdfs/responses" >> .gitignore`
+
+> **Note**: System prompt rules are not created as a file on disk.
+> Use `mdfs rules` to view and copy the system prompt to clipboard.
 
 ### `mdfs bundle`
 
@@ -232,6 +352,23 @@ mdfs extract response.md -f         # force overwrite all files
 - Without `--force`, prompts before overwriting existing files
 - Supports both full files and unified diff patches
 - Uses fuzzy matching for patches (line numbers are hints, context lines matter)
+
+### `mdfs rules`
+
+Display and copy system prompt rules to clipboard.
+
+```bash
+mdfs rules              # print rules to console and copy to clipboard
+```
+
+Prints the MDFS system prompt that instructs LLMs how to format files
+and patches. Automatically copies to clipboard for easy pasting into
+chat interfaces.
+
+**Usage notes:**
+- Output goes to stdout (can be piped or redirected)
+- Content is also copied to system clipboard
+- Useful when `.mdfs/rules/` directory exists but file is not on disk
 
 ### `mdfs log`
 
@@ -314,11 +451,11 @@ as long as the context lines are correct.
 
 ## System prompt
 
-`mdfs init` creates `.mdfs/rules/mdfs-system.md` — a system prompt that
-teaches the LLM to output files in MDFS format. The bundler automatically
-prepends it to every context file.
+The system prompt teaches the LLM to output files in MDFS format.
+The bundler automatically prepends it to every context file.
 
-You can customize it or replace it entirely.
+Use `mdfs rules` to view the system prompt and copy it to clipboard.
+You can also customize rules by placing files in `.mdfs/rules/`.
 
 ## Project layout with MDFS
 

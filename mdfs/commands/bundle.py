@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from argparse import Namespace
 from pathlib import Path
 
+from ..config import Config
 from ..core.bundler import bundle
-from ..utils import contexts_dir, make_filename, rules_dir
+from ..utils import make_filename
 from .base import BaseCommand
 
 
@@ -22,15 +24,23 @@ class BundleCommand(BaseCommand):
         Returns:
             Exit code (0 for success)
         """
+        # Load configuration
+        try:
+            config = Config()
+        except Exception as e:
+            print(f"Error loading configuration: {e}", file=sys.stderr)
+            config = Config.__new__(Config)
+            config.config_path = None
+            config.config_data = {}
+
+        # Apply command-line config overrides
+        self.apply_config_overrides(config)
+
         system_prompt = None
         if self.args.system_prompt:
             system_prompt = Path(self.args.system_prompt).read_text(
                 encoding="utf-8"
             )
-        else:
-            default_prompt = rules_dir(self.root) / "mdfs-system.md"
-            if default_prompt.exists():
-                system_prompt = default_prompt.read_text(encoding="utf-8")
 
         # Determine whether to include preamble
         include_preamble = not self.args.no_preamble
@@ -42,13 +52,14 @@ class BundleCommand(BaseCommand):
             include_preamble=include_preamble,
             respect_gitignore=not self.args.no_gitignore if hasattr(self.args, "no_gitignore") else True,
             interactive=True,
+            prompt_extensions=config.load_prompt_extensions(self.root),
         )
 
         if self.args.output:
             out_path = Path(self.args.output)
         else:
             filename = make_filename(self.args.label)
-            out_path = contexts_dir(self.root) / filename
+            out_path = config.get_contexts_dir(self.root) / filename
 
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(result, encoding="utf-8")
@@ -58,6 +69,6 @@ class BundleCommand(BaseCommand):
             display_path = out_path
         print(
             f"  📦 Context saved: {display_path}",
-            file=__import__("sys").stderr,
+            file=sys.stderr,
         )
         return 0

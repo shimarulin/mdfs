@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from argparse import Namespace
 from pathlib import Path
 
+from ..config import Config
 from ..utils import find_mdfs_root
 
 
@@ -43,3 +44,21 @@ class BaseCommand(ABC):
         """
         print(f"Error: {message}", file=sys.stderr)
         sys.exit(exit_code)
+
+    def apply_config_overrides(self, config: Config) -> None:
+        """Apply command-line config overrides to the configuration.
+        
+        Command-line arguments take precedence over config file values.
+        
+        Args:
+            config: Config object to override
+        """
+        overrides = {
+            "contexts_dir": getattr(self.args, "contexts_dir", None),
+            "responses_dir": getattr(self.args, "responses_dir", None),
+            "prompt_extensions_dirs": getattr(self.args, "prompt_extensions_dirs", None),
+        }
+        # Remove None values to avoid overriding with None
+        overrides = {k: v for k, v in overrides.items() if v is not None}
+        if overrides:
+            config.override(**overrides)

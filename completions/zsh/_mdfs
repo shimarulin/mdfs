@@ -8,11 +8,15 @@ _mdfs() {
         'paste:Save clipboard as response, optionally extract files'
         'extract:Extract files and apply patches from Markdown'
         'log:Show chronological log of contexts and responses'
+        'rules:Display and copy system prompt rules to clipboard'
     )
 
     _arguments -C \
         '-d[Project directory]:directory:_directories' \
         '--dir[Project directory]:directory:_directories' \
+        '--contexts-dir[Override contexts directory]:directory:_directories' \
+        '--responses-dir[Override responses directory]:directory:_directories' \
+        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories' \
         '1:command:->command' \
         '*::arg:->args'
 
@@ -23,6 +27,7 @@ _mdfs() {
         args)
             case "$words[1]" in
                 init) ;;
+                rules) ;;
                 bundle)
                     _arguments \
                         '-f[Files to include]:*:file:_files' \
@@ -32,7 +37,10 @@ _mdfs() {
                         '-s[System prompt file]:file:_files' \
                         '--system-prompt[System prompt file]:file:_files' \
                         '-o[Output file]:file:_files' \
-                        '--output[Output file]:file:_files'
+                        '--output[Output file]:file:_files' \
+                        '--contexts-dir[Override contexts directory]:directory:_directories' \
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories'
                     ;;
                 paste)
                     _arguments \
@@ -40,13 +48,19 @@ _mdfs() {
                         '--label[Label for response file]:label:' \
                         '-x[Also extract files]' \
                         '--extract[Also extract files]' \
-                        '--dry-run[Show actions without writing]'
+                        '--dry-run[Show actions without writing]' \
+                        '--contexts-dir[Override contexts directory]:directory:_directories' \
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories'
                     ;;
                 extract)
                     _arguments \
                         '-i[Input Markdown file]:file:_files' \
                         '--input[Input Markdown file]:file:_files' \
-                        '--dry-run[Show actions without writing]'
+                        '--dry-run[Show actions without writing]' \
+                        '--contexts-dir[Override contexts directory]:directory:_directories' \
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories'
                     ;;
                 log) ;;
             esac

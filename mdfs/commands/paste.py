@@ -5,9 +5,10 @@ from __future__ import annotations
 import sys
 from argparse import Namespace
 
+from ..config import Config
 from ..core.extractor import extract as do_extract
 from ..core.parser import parse, split_files_and_patches
-from ..utils import get_clipboard, make_filename, print_actions, responses_dir
+from ..utils import get_clipboard, make_filename, print_actions
 from .base import BaseCommand
 
 
@@ -17,12 +18,24 @@ class PasteCommand(BaseCommand):
     def execute(self) -> int:
         """Execute the paste command.
         
-        Saves clipboard content as a response file and optionally
-        extracts files and applies patches.
+        Reads clipboard content and saves it as a response file.
+        Optionally extracts files and applies patches if --extract flag is set.
         
         Returns:
-            Exit code (0 for success, 1 for failure)
+            Exit code (0 for success)
         """
+        # Load configuration
+        try:
+            config = Config()
+        except Exception as e:
+            print(f"Error loading configuration: {e}", file=sys.stderr)
+            config = Config.__new__(Config)
+            config.config_path = None
+            config.config_data = {}
+
+        # Apply command-line config overrides
+        self.apply_config_overrides(config)
+
         content = get_clipboard()
         
         # Check if clipboard is empty before processing
@@ -35,7 +48,7 @@ class PasteCommand(BaseCommand):
             return 0
         
         filename = make_filename(self.args.label)
-        out_path = responses_dir(self.root) / filename
+        out_path = config.get_responses_dir(self.root) / filename
 
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(content, encoding="utf-8")
