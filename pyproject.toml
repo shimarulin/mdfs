@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mdfs"
-version = "0.5.1"
+version = "0.6.0"
 description = "Markdown FileSystem — bundle, extract, and patch project files via LLM"
 readme = "README.md"
 license = {text = "MIT"}
