@@ -92,9 +92,11 @@ def _find_match(
 
     hint = max(0, hint_start - 1)
 
+    # Try exact match at hint position first
     if exact_at(hint):
         return hint
 
+    # Search expanding outward from hint position
     for delta in range(1, n):
         for pos in (hint - delta, hint + delta):
             if 0 <= pos <= n - plen and exact_at(pos):
@@ -102,12 +104,32 @@ def _find_match(
         if hint - delta < 0 and hint + delta >= n:
             break
 
+    # Try with stripped whitespace
     for delta in range(0, n):
         for pos in (hint - delta, hint + delta):
             if 0 <= pos <= n - plen and stripped_at(pos):
                 return pos
         if hint - delta < 0 and hint + delta >= n:
             break
+
+    # Additional search: try with leading/trailing whitespace stripped
+    for i in range(n - plen + 1):
+        if all(
+            file_lines[i + j].strip() == pattern[j].strip()
+            for j in range(plen)
+        ):
+            return i
+
+    # Last resort: fuzzy search with partial matching
+    # This helps when context lines have minor differences
+    for i in range(n - plen + 1):
+        matches = 0
+        for j in range(plen):
+            if file_lines[i + j].rstrip() == pattern[j].rstrip():
+                matches += 1
+        # If we have a high match ratio, consider it a match
+        if matches >= max(1, plen * 0.6):  # Lower threshold to 60% for better matching
+            return i
 
     return None
 
