@@ -281,6 +281,129 @@ class TestExtract(unittest.TestCase):
         finally:
             sys.stdin = old_stdin
 
+    def test_multiple_patches_to_same_file(self):
+        """Test that multiple patches to the same file are applied in sequence (chained)."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        original = "line1\nline2\nline3\n"
+        (src / "main.py").write_text(original, encoding="utf-8")
+
+        # Two patches: first adds a line after line2, second modifies line3
+        md = (
+            "<!-- patch: \"src/main.py\" -->\n"
+            "```diff\n"
+            "--- a/src/main.py\n"
+            "+++ b/src/main.py\n"
+            "@@ -1,3 +1,4 @@\n"
+            " line1\n"
+            " line2\n"
+            "+inserted\n"
+            " line3\n"
+            "```\n"
+            "<!-- patch: \"src/main.py\" -->\n"
+            "```diff\n"
+            "--- a/src/main.py\n"
+            "+++ b/src/main.py\n"
+            "@@ -4 +4 @@\n"
+            "-line3\n"
+            "+line3_modified\n"
+            "```\n"
+        )
+        actions = extract(md, self.tmpdir)
+        # Should have 2 patch actions
+        patch_actions = [a for a in actions if a.action == "patch"]
+        self.assertEqual(len(patch_actions), 2)
+        
+        # Check final content: should have both modifications
+        result = (src / "main.py").read_text(encoding="utf-8")
+        self.assertIn("line1", result)
+        self.assertIn("line2", result)
+        self.assertIn("inserted", result)
+        self.assertIn("line3_modified", result)
+        # Check that old line3 is not there
+        lines = result.strip().split("\n")
+        self.assertNotIn("line3", lines)  # modified version should be there instead
+
+    def test_multiple_patches_context_mismatch_stops_chain(self):
+        """Test that if second patch fails (context mismatch), no write happens and error is reported."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        original = "line1\nline2\nline3\n"
+        (src / "main.py").write_text(original, encoding="utf-8")
+
+        # First patch succeeds, second patch has wrong context
+        md = (
+            "<!-- patch: \"src/main.py\" -->\n"
+            "```diff\n"
+            "--- a/src/main.py\n"
+            "+++ b/src/main.py\n"
+            "@@ -1,3 +1,4 @@\n"
+            " line1\n"
+            " line2\n"
+            "+inserted\n"
+            " line3\n"
+            "```\n"
+            "<!-- patch: \"src/main.py\" -->\n"
+            "```diff\n"
+            "--- a/src/main.py\n"
+            "+++ b/src/main.py\n"
+            "@@ -1,3 +1,3 @@\n"
+            " xxx\n-yyy\n+zzz\n www\n"
+            "```\n"
+        )
+        actions = extract(md, self.tmpdir)
+        
+        # Should have 1 error action (patch 2 failed)
+        error_actions = [a for a in actions if a.action == "error"]
+        self.assertEqual(len(error_actions), 1)
+        self.assertIn("Patch 2", error_actions[0].detail)  # Should mention patch number
+        self.assertIn("cannot find context", error_actions[0].detail.lower())
+        
+        # File should remain in original state (no partial writes)
+        result = (src / "main.py").read_text(encoding="utf-8")
+        self.assertEqual(result, original)
+
+    def test_multiple_patches_different_files(self):
+        """Test that patches to different files are applied independently."""
+        src = Path(self.tmpdir) / "src"
+        src.mkdir(parents=True)
+        (src / "file1.py").write_text("a\nb\nc\n", encoding="utf-8")
+        (src / "file2.py").write_text("x\ny\nz\n", encoding="utf-8")
+
+        md = (
+            "<!-- patch: \"src/file1.py\" -->\n"
+            "```diff\n"
+            "--- a/src/file1.py\n"
+            "+++ b/src/file1.py\n"
+            "@@ -1,3 +1,4 @@\n"
+            " a\n"
+            " b\n"
+            "+b_prime\n"
+            " c\n"
+            "```\n"
+            "<!-- patch: \"src/file2.py\" -->\n"
+            "```diff\n"
+            "--- a/src/file2.py\n"
+            "+++ b/src/file2.py\n"
+            "@@ -1,3 +1,4 @@\n"
+            " x\n"
+            " y\n"
+            "+y_prime\n"
+            " z\n"
+            "```\n"
+        )
+        actions = extract(md, self.tmpdir)
+        
+        # Should have 2 patch actions (one per file)
+        patch_actions = [a for a in actions if a.action == "patch"]
+        self.assertEqual(len(patch_actions), 2)
+        
+        # Check both files were modified correctly
+        file1 = (src / "file1.py").read_text(encoding="utf-8")
+        file2 = (src / "file2.py").read_text(encoding="utf-8")
+        self.assertIn("b_prime", file1)
+        self.assertIn("y_prime", file2)
+
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 

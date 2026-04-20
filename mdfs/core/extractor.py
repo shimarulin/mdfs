@@ -115,21 +115,46 @@ def extract(
         target.write_text(content_to_write + "\n", encoding="utf-8")
         actions.append(Action("write", block.path, detail))
 
+    # Group patches by file path to apply them in sequence
+    patches_by_file: dict[str, list] = {}
     for block in patches:
-        target = base / block.path
+        path_key = str(block.path)
+        if path_key not in patches_by_file:
+            patches_by_file[path_key] = []
+        patches_by_file[path_key].append(block)
+
+    # Apply patches for each file, chaining them together
+    for file_path, file_patches in patches_by_file.items():
+        target = base / file_path
         if not target.is_file():
-            actions.append(Action("error", block.path, "Cannot patch: file does not exist"))
+            actions.append(Action("error", file_path, "Cannot patch: file does not exist"))
             continue
-        original = target.read_text(encoding="utf-8")
-        try:
-            patched = apply_patch(original, block.content)
-        except PatchError as e:
-            actions.append(Action("error", block.path, str(e)))
-            continue
-        if dry_run:
-            actions.append(Action("patch", block.path, "(dry-run)"))
-            continue
-        target.write_text(patched, encoding="utf-8")
-        actions.append(Action("patch", block.path))
+        
+        # Read file once at the start
+        current_content = target.read_text(encoding="utf-8")
+        patch_succeeded = True
+        
+        # Apply all patches to this file in sequence
+        for patch_index, block in enumerate(file_patches, 1):
+            if dry_run:
+                actions.append(Action("patch", file_path, "(dry-run)"))
+                continue
+            
+            try:
+                current_content = apply_patch(current_content, block.content)
+            except PatchError as e:
+                # If this is not the first patch, indicate it in the error message
+                error_msg = str(e)
+                if len(file_patches) > 1:
+                    error_msg = f"Patch {patch_index}: {error_msg}"
+                actions.append(Action("error", file_path, error_msg))
+                patch_succeeded = False
+                break
+        
+        # Write file only if all patches succeeded
+        if patch_succeeded:
+            target.write_text(current_content, encoding="utf-8")
+            for _ in file_patches:
+                actions.append(Action("patch", file_path))
 
     return actions
