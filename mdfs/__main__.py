@@ -7,7 +7,6 @@ Commands:
     paste    — create a response file from clipboard content
     extract  — write file blocks to disk, apply patch blocks
     log      — show chronological history
-    rules    — display and copy system prompt rules to clipboard
     setup    — install/uninstall shell completions
 """
 
@@ -24,7 +23,6 @@ from .commands import (
     InitCommand,
     LogCommand,
     PasteCommand,
-    RulesCommand,
     SetupCommand,
 )
 from .utils import timestamp
@@ -60,11 +58,41 @@ def _get_version() -> str:
     return "unknown"
 
 
-def main() -> None:
-    """Parse arguments and dispatch to appropriate command."""
+# Shared parent for the directory overrides: accepted both before and
+# after the subcommand (`mdfs --rules-dir X bundle ...` and
+# `mdfs bundle --rules-dir X ...` both work).
+def _make_overrides_parent() -> argparse.ArgumentParser:
+    parent = argparse.ArgumentParser(add_help=False)
+    # SUPPRESS keeps the main-parser value intact when the subparser
+    # (same parent) does not see the flag: without it, subparser defaults
+    # would clobber `mdfs --rules-dir X bundle ...` with None.
+    parent.add_argument(
+        "--contexts-dir", default=argparse.SUPPRESS,
+        help="Override contexts directory (overrides .mdfsrc.yaml)",
+    )
+    parent.add_argument(
+        "--responses-dir", default=argparse.SUPPRESS,
+        help="Override responses directory (overrides .mdfsrc.yaml)",
+    )
+    parent.add_argument(
+        "--rules-dir", default=argparse.SUPPRESS,
+        help="Override rules directory (overrides .mdfsrc.yaml)",
+    )
+    return parent
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the mdfs argument parser.
+
+    The directory overrides (`--contexts-dir`, `--responses-dir`,
+    `--rules-dir`) are accepted both before and after the subcommand:
+    `mdfs --rules-dir X bundle ...` and `mdfs bundle --rules-dir X ...`.
+    """
+    overrides = _make_overrides_parent()
     parser = argparse.ArgumentParser(
         prog="mdfs",
         description="MDFS — Markdown FileSystem tools",
+        parents=[overrides],
     )
     parser.add_argument(
         "-v", "--version", action="version",
@@ -74,19 +102,15 @@ def main() -> None:
         "-d", "--dir", default=".",
         help="Project directory (default: current)",
     )
-    parser.add_argument(
-        "--contexts-dir",
-        help="Override contexts directory (overrides .mdfsrc.yaml)",
-    )
-    parser.add_argument(
-        "--responses-dir",
-        help="Override responses directory (overrides .mdfsrc.yaml)",
-    )
     sub = parser.add_subparsers(dest="command", required=False)
 
-    sub.add_parser("init", help="Initialize .mdfs directory")
+    sub.add_parser("init", help="Initialize .mdfs directory",
+                   parents=[overrides])
 
-    p_bundle = sub.add_parser("bundle", help="Bundle rules and/or files into context.md")
+    p_bundle = sub.add_parser(
+        "bundle", help="Bundle rules and/or files into context.md",
+        parents=[overrides],
+    )
     p_bundle.add_argument("files", nargs="*",
                           help="Project-relative file paths or directories "
                                "(optional: without files, bundles only the rules)")
@@ -105,25 +129,26 @@ def main() -> None:
     p_bundle.add_argument("--no-gitignore", action="store_true",
                           help="Include files that are in .gitignore")
 
-    p_paste = sub.add_parser("paste", help="Save clipboard as response")
+    p_paste = sub.add_parser("paste", help="Save clipboard as response",
+                             parents=[overrides])
     p_paste.add_argument("label", nargs="?", default=None,
                          help="Label for the response file (optional)")
     p_paste.add_argument("-x", "--extract", action="store_true",
                          help="Also extract files and apply patches")
     p_paste.add_argument("--dry-run", action="store_true")
 
-    p_extract = sub.add_parser("extract", help="Extract files from Markdown")
+    p_extract = sub.add_parser("extract", help="Extract files from Markdown",
+                               parents=[overrides])
     p_extract.add_argument("input",
                            help="Input Markdown file")
     p_extract.add_argument("--dry-run", action="store_true")
     p_extract.add_argument("-f", "--force", action="store_true",
                            help="Force overwrite all existing files")
 
-    sub.add_parser("log", help="Show chronological log")
+    sub.add_parser("log", help="Show chronological log", parents=[overrides])
 
-    sub.add_parser("rules", help="Display and copy system prompt rules")
-
-    p_setup = sub.add_parser("setup", help="Install/uninstall shell completions")
+    p_setup = sub.add_parser("setup", help="Install/uninstall shell completions",
+                             parents=[overrides])
     p_setup.add_argument(
         "-i", "--install-completions",
         action="store_true",
@@ -135,8 +160,13 @@ def main() -> None:
         help="Uninstall shell completions",
     )
 
-    args = parser.parse_args()
+    return parser
 
+
+def main() -> None:
+    """Parse arguments and dispatch to appropriate command."""
+    parser = build_parser()
+    args = parser.parse_args()
     if args.command is None:
         parser.print_help()
         sys.exit(1)
@@ -148,7 +178,6 @@ def main() -> None:
         "paste": PasteCommand,
         "extract": ExtractCommand,
         "log": LogCommand,
-        "rules": RulesCommand,
         "setup": SetupCommand,
     }
 

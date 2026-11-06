@@ -138,6 +138,37 @@ class TestBundleCommand(unittest.TestCase):
         # No file sections in rules-only mode
         self.assertNotIn("def main():", content)
 
+    def test_bundle_rules_only_no_preamble(self):
+        """--no-preamble drops the preamble wrapper, keeps the rules block."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "00-style.md").write_text(
+            "Always answer briefly.\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="rules-plain",
+            system_prompt=None,
+            output=None,
+            no_preamble=True,
+            no_gitignore=False,
+            rules=None,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        self.assertEqual(len(contexts), 1)
+        content = contexts[0].read_text(encoding="utf-8")
+        # The rules block is the payload of a rules-only bundle
+        self.assertIn("<!-- mdfs:rules:start -->", content)
+        self.assertIn("Always answer briefly.", content)
+        self.assertIn("apply to the entire conversation", content)
+        # ...while the preamble wrapper is disabled
+        self.assertNotIn("MANDATORY FORMAT RULES", content)
+
     def test_bundle_rules_only_with_star_glob(self):
         """--rules '*' includes every rule (replaces the old --all)."""
         rules = self.project_root / ".mdfs" / "rules"
@@ -728,3 +759,43 @@ class TestFindMdfsRoot(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCliOverridePlacement(unittest.TestCase):
+    """Directory overrides work before AND after the subcommand."""
+
+    def test_overrides_after_subcommand(self):
+        """`mdfs bundle --rules-dir X --contexts-dir Y` parses correctly."""
+        from mdfs.__main__ import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["bundle", "--rules-dir", "alt", "--contexts-dir", "c", "f.py"]
+        )
+        self.assertEqual(args.command, "bundle")
+        self.assertEqual(args.rules_dir, "alt")
+        self.assertEqual(args.contexts_dir, "c")
+        self.assertEqual(args.files, ["f.py"])
+
+    def test_overrides_before_subcommand(self):
+        """`mdfs --rules-dir X bundle f.py` parses correctly."""
+        from mdfs.__main__ import build_parser
+
+        args = build_parser().parse_args(["--rules-dir", "alt", "bundle", "f.py"])
+        self.assertEqual(args.command, "bundle")
+        self.assertEqual(args.rules_dir, "alt")
+
+    def test_overrides_on_all_subcommands(self):
+        """Every subcommand accepts the directory overrides."""
+        from mdfs.__main__ import build_parser
+
+        parser = build_parser()
+        for argv in (
+            ["init"],
+            ["paste", "-x"],
+            ["extract", "in.md"],
+            ["log"],
+            ["setup"],
+        ):
+            args = parser.parse_args([*argv, "--responses-dir", "r"])
+            self.assertEqual(args.responses_dir, "r", msg=str(argv))

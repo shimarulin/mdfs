@@ -8,7 +8,6 @@ _mdfs() {
         'paste:Save clipboard as response, optionally extract files'
         'extract:Extract files and apply patches from Markdown'
         'log:Show chronological log of contexts and responses'
-        'rules:Display and copy system prompt rules to clipboard'
     )
 
     _arguments -C \
@@ -16,6 +15,7 @@ _mdfs() {
         '--dir[Project directory]:directory:_directories' \
         '--contexts-dir[Override contexts directory]:directory:_directories' \
         '--responses-dir[Override responses directory]:directory:_directories' \
+        '--rules-dir[Override rules directory]:directory:_directories' \
         '1:command:->command' \
         '*::arg:->args'
 
@@ -26,7 +26,6 @@ _mdfs() {
         args)
             case "$words[1]" in
                 init) ;;
-                rules) ;;
                 bundle)
                     _arguments \
                         '*:file:_files' \
@@ -43,7 +42,8 @@ _mdfs() {
                         '--no-preamble[Disable preamble and table of contents]' \
                         '--no-gitignore[Include gitignored files]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
-                        '--responses-dir[Override responses directory]:directory:_directories'
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--rules-dir[Override rules directory]:directory:_directories'
                     ;;
                 paste)
                     _arguments \
@@ -53,7 +53,8 @@ _mdfs() {
                         '--extract[Also extract files]' \
                         '--dry-run[Show actions without writing]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
-                        '--responses-dir[Override responses directory]:directory:_directories'
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--rules-dir[Override rules directory]:directory:_directories'
                     ;;
                 extract)
                     _arguments \
@@ -61,7 +62,8 @@ _mdfs() {
                         '--input[Input Markdown file]:file:_files' \
                         '--dry-run[Show actions without writing]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
-                        '--responses-dir[Override responses directory]:directory:_directories'
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--rules-dir[Override rules directory]:directory:_directories'
                     ;;
                 log) ;;
             esac

@@ -163,6 +163,7 @@ mdfs log --contexts-dir ./my-contexts
 |------|-------------|
 | `--contexts-dir` | Override contexts directory path |
 | `--responses-dir` | Override responses directory path |
+| `--rules-dir` | Override rules directory path |
 
 **Example `.mdfsrc.yaml`:**
 
@@ -251,8 +252,7 @@ Creates:
 
 > **Note**: `00-file-output-format.md` is the built-in format rule as an
 > editable file — tune it to your project. If you delete it, the built-in
-> packaged copy is used instead. Use `mdfs rules` to view and copy the
-> packaged copy directly.
+> packaged copy is used instead.
 
 ### `mdfs bundle`
 
@@ -346,23 +346,6 @@ mdfs extract response.md -f         # force overwrite all files
 - Supports both full files and unified diff patches
 - Uses fuzzy matching for patches (line numbers are hints, context lines matter)
 
-### `mdfs rules`
-
-Display and copy system prompt rules to clipboard.
-
-```bash
-mdfs rules              # print rules to console and copy to clipboard
-```
-
-Prints the MDFS system prompt that instructs LLMs how to format files
-and patches. Automatically copies to clipboard for easy pasting into
-chat interfaces.
-
-**Usage notes:**
-- Output goes to stdout (can be piped or redirected)
-- Content is also copied to system clipboard
-- Useful when `.mdfs/rules/` directory exists but file is not on disk
-
 ### `mdfs log`
 
 Show chronological history of contexts and responses in `.mdfs/`.
@@ -447,9 +430,13 @@ as long as the context lines are correct.
 The system prompt teaches the LLM to output files in MDFS format.
 The bundler automatically prepends it to every context file.
 
-Use `mdfs rules` to view the system prompt and copy it to clipboard.
-You can also add project rules by placing files in `.mdfs/rules/`
-(see [Rules](#rules-mdfsrules)).
+The format rules live in `.mdfs/rules/00-file-output-format.md`
+(created by `mdfs init`; packaged fallback when absent) — edit that file
+to tune them. You can also add project rules by placing files in
+`.mdfs/rules/` (see [Rules](#rules-mdfsrules)).
+
+To preview the ready-to-paste session-start document, run `mdfs bundle`
+without file arguments (add `--clip` to also copy it to the clipboard).
 
 In a rules-only bundle (`mdfs bundle` without files), the document ends
 with a note that the rules apply to the entire conversation, so a single

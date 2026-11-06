@@ -54,7 +54,6 @@ mdfs/
 │   ├── paste.py            # Save and extract from clipboard
 │   ├── extract.py          # Extract files from Markdown
 │   ├── log.py              # Show history of contexts/responses
-│   ├── rules.py            # Display system prompt
 │   └── setup.py            # Shell setup and completions
 └── core/                   # Core functionality modules
     ├── __init__.py
@@ -219,25 +218,6 @@ class CommandNameCommand:
 
 ---
 
-#### `mdfs rules` — Display System Prompt
-
-**Class**: `RulesCommand` (`mdfs/commands/rules.py`) **[NEW]**
-
-**Purpose**: Display and copy system prompt to clipboard
-
-**Parameters**: None
-
-**Output**:
-- Prints DEFAULT_SYSTEM_PROMPT to stdout
-- Copies to system clipboard
-- Prints confirmation message to stderr
-
-**Notes**:
-- Useful when `.mdfs/rules/` exists but file is not on disk
-- Content is automatically copied to clipboard for pasting into LLM chat
-
----
-
 #### `mdfs setup` — Shell Configuration
 
 **Class**: `SetupCommand` (`mdfs/commands/setup.py`)
@@ -347,6 +327,7 @@ All commands support global flags to override configuration values (take precede
 
 - `--contexts-dir PATH` — Override contexts directory
 - `--responses-dir PATH` — Override responses directory
+- `--rules-dir PATH` — Override rules directory
 
 **Example usage:**
 ```bash
@@ -473,7 +454,6 @@ tests/
 ├── test_parser.py              # marker parsing
 ├── test_cli_integration.py      # end-to-end CLI tests
 ├── test_setup_command.py        # shell setup command
-├── test_rules_command.py        # rules command [NEW]
 └── test_naming.py              # timestamp and naming
 ```
 
@@ -657,8 +637,9 @@ Before committing changes:
 **Content**: System prompt that teaches LLMs to output files in MDFS format
 
 **Used by**:
-- `BundleCommand` — prepended to every context
-- `RulesCommand` — displayed to user and copied to clipboard
+- `mdfs/core/rules.py` — `built_in_rule()`: packaged fallback copy of
+  the `00-file-output-format.md` rule (used when the project has no
+  such rule) and shipped to projects by `mdfs init`
 
 **Format**: Markdown with sections on markers, fence depth, patching, etc.
 
