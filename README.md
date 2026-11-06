@@ -262,7 +262,6 @@ Pack project rules and/or files into a single Markdown document.
 mdfs bundle file1.py file2.py ...      # paths relative to project root
 mdfs bundle src/*.py -l "my label"     # with label
 mdfs bundle src/*.py -o custom.md      # custom output path
-mdfs bundle src/*.py -s prompt.md      # custom system prompt
 mdfs bundle src/*.py -q "Review this"  # append your question
 mdfs bundle src/*.py --clip            # also copy to clipboard
 mdfs bundle --rules '*'                # include all rules
@@ -275,7 +274,6 @@ mdfs bundle src/*.py --no-gitignore    # include .gitignore'd files
 |---------------|-------------|
 | `files` (positional, optional) | File paths or directories to include (multiple allowed). **Without files, bundles only the rules** — useful at session start |
 | `-l, --label` | Human-readable label for filename |
-| `-s, --system-prompt` | Custom system prompt file (legacy mode, with `--no-preamble`) |
 | `-o, --output` | Custom output path (default: `.mdfs/contexts/<timestamp>.md`) |
 | `-q, --query` | User question to append to the bundle |
 | `--clip` | Also copy the bundle to clipboard |

@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ..default_system_prompt import PREAMBLE_TEXT, QUICK_REMINDER_TEXT
 from .gitignore import GitignoreFilter, is_binary_file
 
 # Footer for rules-only bundles (no files attached): tells the LLM that
@@ -21,6 +20,41 @@ RULES_ONLY_FOOTER = (
 # (the extract parser only matches file/patch, so they never interfere).
 RULES_START_MARKER = "<!-- mdfs:rules:start -->"
 RULES_END_MARKER = "<!-- mdfs:rules:end -->"
+
+PREAMBLE_TEXT = r"""# 🔴 **MANDATORY FORMAT RULES (read before files)** 🔴
+
+---
+
+**I need you to follow a specific format for all project files and patches described below.**
+
+Read the rules carefully. After reading, **do not output these rules** – simply process the document that follows.  
+If you fully understand and can apply the rules, proceed directly to the document content.  
+If anything is unclear, respond with `"I need clarification on: <specific rule>"` and wait for clarification.
+
+**Rules summary (full details are in the attached system prompt equivalent below):**
+
+- Every project file block: `### path` → `<!-- file: "path" -->` → code fence.
+- Every patch block: `### path` → `<!-- patch: "path" -->` → `diff` fence with `@@ -0,0 +0,0 @@` (exact context lines required).
+- Code examples (not real files) have **no marker**.
+- Fence depth: when uncertain, use **5 or 6 backticks** (add 2 extra).
+- Heading level: default `###`.
+- Paths in markers **must be in double quotes**.
+
+**The full rule set is embedded below in the rules block delimited by `mdfs:rules` start/end HTML-comment markers. Read it once, then ignore it in your output.**
+"""
+
+QUICK_REMINDER_TEXT = r"""---
+📋 **QUICK REMINDER (before file)**
+
+✅ Every file block: `### path` → `<!-- file: "path" -->` → ` ```lang `
+✅ Every patch block: `### path` → `<!-- patch: "path" -->` → ` ```diff ` with `@@ -0,0 +0,0 @@`
+✅ Code examples (not files) → **no marker**
+✅ Fence depth: uncertain → use **5 or 6 backticks**
+✅ Paths in markers always in **double quotes**
+✅ Heading: default `###`
+
+---
+"""
 
 
 def _detect_max_fence(content: str) -> int:
@@ -158,7 +192,6 @@ def _question_section(query: str) -> list[str]:
 def bundle(
     base_dir: str | Path,
     file_paths: list[str],
-    system_prompt: str | None = None,
     heading_level: int = 3,
     include_preamble: bool = True,
     respect_gitignore: bool = True,
@@ -173,8 +206,6 @@ def bundle(
         file_paths: List of files and/or directories to bundle. When empty,
             a rules-only document is produced (no TOC, no file sections) —
             useful at session start, before any files are sent to the chat
-        system_prompt: Optional system prompt to include (legacy mode,
-            used only when include_preamble is False)
         heading_level: Markdown heading level (default: 3)
         include_preamble: Whether to include mandatory format rules preamble
         respect_gitignore: Whether to respect .gitignore (default: True)
@@ -208,7 +239,7 @@ def bundle(
         if include_preamble:
             parts.append(PREAMBLE_TEXT.rstrip())
             parts.append("")
-        if rules and rules.strip() and (include_preamble or not system_prompt):
+        if rules and rules.strip():
             parts.append(RULES_START_MARKER)
             parts.append("")
             parts.append(rules.rstrip())
@@ -216,9 +247,6 @@ def bundle(
             parts.append(RULES_ONLY_FOOTER)
             parts.append("")
             parts.append(RULES_END_MARKER)
-        elif system_prompt and not include_preamble:
-            # Legacy behavior: custom prompt without preamble
-            parts.append(system_prompt.rstrip())
         if query and query.strip():
             parts.append("")
             parts.extend(_question_section(query))
@@ -243,12 +271,6 @@ def bundle(
         toc = _generate_table_of_contents(expanded_paths)
         if toc:
             parts.append(toc)
-    elif system_prompt:
-        # Legacy behavior: if system_prompt is provided and preamble is disabled
-        parts.append(system_prompt.rstrip())
-        parts.append("")
-        parts.append("---")
-        parts.append("")
 
     heading_prefix = "#" * heading_level
 

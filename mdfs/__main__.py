@@ -115,7 +115,6 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Project-relative file paths or directories "
                                "(optional: without files, bundles only the rules)")
     p_bundle.add_argument("-l", "--label", help="Label for the context file")
-    p_bundle.add_argument("-s", "--system-prompt", help="System prompt file")
     p_bundle.add_argument("-o", "--output", help="Custom output path")
     p_bundle.add_argument("-q", "--query", help="User question to append to the bundle")
     p_bundle.add_argument("--clip", action="store_true",

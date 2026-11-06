@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mdfs.core.rules import (
     BUILTIN_RULE_NAME,
+    DATA_DIR,
     DEFAULT_RULE_NAME,
     Rule,
     built_in_rule,
@@ -15,7 +16,6 @@ from mdfs.core.rules import (
     render_rules,
     resolve_rules,
 )
-from mdfs.default_system_prompt import DEFAULT_SYSTEM_PROMPT
 
 
 def write(path: Path, text: str) -> None:
@@ -98,8 +98,18 @@ class TestBuiltInRule(unittest.TestCase):
 
     def test_name_and_body(self):
         rule = built_in_rule()
+        packaged = (DATA_DIR / DEFAULT_RULE_NAME).read_text(encoding="utf-8")
         self.assertEqual(rule.name, BUILTIN_RULE_NAME)
-        self.assertEqual(rule.body, DEFAULT_SYSTEM_PROMPT.rstrip())
+        self.assertEqual(rule.body, packaged.rstrip())
+
+    def test_packaged_file_is_the_single_source(self):
+        """The packaged copy is a real file in mdfs/data/ (no duplicate constant)."""
+        packaged = DATA_DIR / DEFAULT_RULE_NAME
+        self.assertTrue(packaged.is_file())
+        body = packaged.read_text(encoding="utf-8")
+        self.assertIn("# Rule: File Output Format", body)
+        # init writes exactly this file (+ trailing newline)
+        self.assertEqual(built_in_rule().body + "\n", body if body.endswith("\n") else body + "\n")
 
     def test_builtin_name_has_no_md_suffix(self):
         self.assertFalse(BUILTIN_RULE_NAME.endswith(".md"))

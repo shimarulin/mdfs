@@ -12,7 +12,6 @@ from ..core.rules import resolve_rules
 from ..utils import copy_to_clipboard, make_filename
 from .base import BaseCommand
 
-
 def parse_rule_globs(raw_values: list[str] | None) -> list[str]:
     """Parse CLI rule glob values into a flat pattern list.
 
@@ -48,6 +47,9 @@ class BundleCommand(BaseCommand):
 
         Rules are selected by filename globs: config ``rules_always``
         (default ``00-*``) plus the ``--rules`` globs (``*`` = all).
+        Custom format instructions belong in the rules directory (e.g.
+        ``.mdfs/rules/00-file-output-format.md``) — there is no separate
+        system prompt argument.
 
         Returns:
             Exit code (0 for success)
@@ -64,12 +66,6 @@ class BundleCommand(BaseCommand):
         # Apply command-line config overrides
         self.apply_config_overrides(config)
 
-        system_prompt = None
-        if self.args.system_prompt:
-            system_prompt = Path(self.args.system_prompt).read_text(
-                encoding="utf-8"
-            )
-
         # Determine whether to include preamble
         include_preamble = not self.args.no_preamble
 
@@ -82,7 +78,6 @@ class BundleCommand(BaseCommand):
         result = bundle(
             base_dir=self.root,
             file_paths=self.args.files,
-            system_prompt=system_prompt,
             include_preamble=include_preamble,
             respect_gitignore=not self.args.no_gitignore if hasattr(self.args, "no_gitignore") else True,
             interactive=True,

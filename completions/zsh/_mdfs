@@ -31,8 +31,6 @@ _mdfs() {
                         '*:file:_files' \
                         '-l[Label for context file]:label:' \
                         '--label[Label for context file]:label:' \
-                        '-s[System prompt file]:file:_files' \
-                        '--system-prompt[System prompt file]:file:_files' \
                         '-o[Output file]:file:_files' \
                         '--output[Output file]:file:_files' \
                         '-q[User question to append to the bundle]:query:' \

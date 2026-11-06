@@ -45,7 +45,8 @@ mdfs/
 ├── __main__.py              # CLI entry point, argument parser
 ├── __init__.py              # Package initialization
 ├── config.py                # Configuration management (NEW)
-├── default_system_prompt.py # DEFAULT_SYSTEM_PROMPT constant
+├── data/                    # Packaged rule file 00-file-output-format.md
+│   └── 00-file-output-format.md   # single source of the built-in rule
 ├── utils.py                 # Utility functions (clipboard, validation, etc.)
 ├── commands/                # Command implementations
 │   ├── __init__.py
@@ -146,7 +147,6 @@ class CommandNameCommand:
 **Parameters**:
 - `files` (positional, optional): File paths or directories to include. **Without files, bundles only the rules** (rules-only mode for session start)
 - `-l, --label` (optional): Human-readable label for filename
-- `-s, --system-prompt` (optional): Custom system prompt file (legacy mode, with `--no-preamble`)
 - `-o, --output` (optional): Custom output path
 - `-q, --query` (optional): User question appended to the bundle
 - `--clip` (flag): Also copy the bundle to clipboard
@@ -630,18 +630,23 @@ Before committing changes:
     └── <timestamp>__<label>.md
 ```
 
-### DEFAULT_SYSTEM_PROMPT
+### Packaged file output format rule
 
-**Location**: `mdfs/default_system_prompt.py`
+**Location**: `mdfs/data/00-file-output-format.md` — a real file inside
+the package, the **single source of truth** (no duplicate constant in
+Python; the former `default_system_prompt.py` module is removed)
 
-**Content**: System prompt that teaches LLMs to output files in MDFS format
+**Content**: Rule that teaches LLMs to output files in MDFS format
 
 **Used by**:
-- `mdfs/core/rules.py` — `built_in_rule()`: packaged fallback copy of
-  the `00-file-output-format.md` rule (used when the project has no
-  such rule) and shipped to projects by `mdfs init`
+- `mdfs/core/rules.py` — `built_in_rule()` reads it: packaged fallback
+  for bundles when the project has no such rule in `.mdfs/rules/`
+- `mdfs init` — writes it into the project rules directory
 
 **Format**: Markdown with sections on markers, fence depth, patching, etc.
+
+**Note**: `PREAMBLE_TEXT` and `QUICK_REMINDER_TEXT` live in
+`mdfs/core/bundler.py` (the only consumer)
 
 ### File Formats
 
