@@ -56,6 +56,7 @@ class BaseCommand(ABC):
         overrides = {
             "contexts_dir": getattr(self.args, "contexts_dir", None),
             "responses_dir": getattr(self.args, "responses_dir", None),
+            "rules_dir": getattr(self.args, "rules_dir", None),
         }
         # Remove None values to avoid overriding with None
         overrides = {k: v for k, v in overrides.items() if v is not None}

@@ -219,22 +219,26 @@ class CommandNameCommand:
 
 ---
 
-#### `mdfs rules` — Display System Prompt
+#### `mdfs rules` — Deprecated Rules Alias
 
-**Class**: `RulesCommand` (`mdfs/commands/rules.py`) **[NEW]**
+**Class**: `RulesCommand` (`mdfs/commands/rules.py`)
 
-**Purpose**: Display and copy system prompt to clipboard
+**Purpose**: Deprecated alias for `mdfs bundle` without file arguments
+(will be removed in 0.8.0)
 
 **Parameters**: None
 
 **Output**:
-- Prints DEFAULT_SYSTEM_PROMPT to stdout
-- Copies to system clipboard
+- Deprecation notice to stderr (`'mdfs rules' is deprecated…`)
+- Prints the rules-only bundle document to stdout (preamble + rules
+  block + persistence footer — same as `mdfs bundle` with no files)
+- Copies the document to the system clipboard
 - Prints confirmation message to stderr
 
 **Notes**:
-- Useful when `.mdfs/rules/` exists but file is not on disk
-- Content is automatically copied to clipboard for pasting into LLM chat
+- Single rules pipeline: uses `resolve_rules()` + `bundle()`, honors
+  `rules_always` globs and the packaged fallback rule
+- Kept for backward compatibility with mdfs ≤ 0.6.x
 
 ---
 
@@ -347,6 +351,7 @@ All commands support global flags to override configuration values (take precede
 
 - `--contexts-dir PATH` — Override contexts directory
 - `--responses-dir PATH` — Override responses directory
+- `--rules-dir PATH` — Override rules directory
 
 **Example usage:**
 ```bash
