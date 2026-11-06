@@ -3,7 +3,7 @@ MDFS command-line interface.
 
 Commands:
     init     — initialize .mdfs directory structure
-    bundle   — collect project files into a single Markdown context file
+    bundle   — collect rules and/or project files into a Markdown context file
     paste    — create a response file from clipboard content
     extract  — write file blocks to disk, apply patch blocks
     log      — show chronological history
@@ -82,22 +82,24 @@ def main() -> None:
         "--responses-dir",
         help="Override responses directory (overrides .mdfsrc.yaml)",
     )
-    parser.add_argument(
-        "--prompt-extensions-dir",
-        action="append",
-        dest="prompt_extensions_dirs",
-        help="Add/override prompt extension directories (can be used multiple times)",
-    )
     sub = parser.add_subparsers(dest="command", required=False)
 
     sub.add_parser("init", help="Initialize .mdfs directory")
 
-    p_bundle = sub.add_parser("bundle", help="Bundle files into context.md")
-    p_bundle.add_argument("files", nargs="+",
-                          help="Project-relative file paths or directories")
+    p_bundle = sub.add_parser("bundle", help="Bundle rules and/or files into context.md")
+    p_bundle.add_argument("files", nargs="*",
+                          help="Project-relative file paths or directories "
+                               "(optional: without files, bundles only the rules)")
     p_bundle.add_argument("-l", "--label", help="Label for the context file")
     p_bundle.add_argument("-s", "--system-prompt", help="System prompt file")
     p_bundle.add_argument("-o", "--output", help="Custom output path")
+    p_bundle.add_argument("-q", "--query", help="User question to append to the bundle")
+    p_bundle.add_argument("--clip", action="store_true",
+                          help="Also copy the bundle to clipboard")
+    p_bundle.add_argument("--rules", action="append", metavar="GLOB",
+                          help="Additional rules to include, by filename globs "
+                               "(comma-separated or repeated, e.g. --rules '00-*,1*'; "
+                               "'*' = all). Default: config 'rules_always'")
     p_bundle.add_argument("--no-preamble", action="store_true",
                           help="Disable preamble and table of contents")
     p_bundle.add_argument("--no-gitignore", action="store_true",

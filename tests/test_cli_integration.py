@@ -102,6 +102,199 @@ class TestBundleCommand(unittest.TestCase):
         content = contexts[0].read_text(encoding="utf-8")
         self.assertIn("You are a helpful assistant.", content)
 
+    def test_bundle_rules_only(self):
+        """Bundle without files: default glob 00-* + built-in fallback."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "00-style.md").write_text(
+            "Always answer briefly.\n", encoding="utf-8")
+        (rules / "20-extra.md").write_text(
+            "Optional rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="rules",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=None,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        self.assertEqual(len(contexts), 1)
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("<!-- mdfs:rules:start -->", content)
+        self.assertIn("Always answer briefly.", content)
+        # default rules_always = ["00-*"]: non-matching rules excluded
+        self.assertNotIn("Optional rule", content)
+        # 00-file-output-format.md absent from the dir -> built-in fallback
+        self.assertIn("File Output Format", content)
+        self.assertIn('name="default-file-output-format"', content)
+        # No file sections in rules-only mode
+        self.assertNotIn("def main():", content)
+
+    def test_bundle_rules_only_with_star_glob(self):
+        """--rules '*' includes every rule (replaces the old --all)."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "00-style.md").write_text(
+            "Always answer briefly.\n", encoding="utf-8")
+        (rules / "20-extra.md").write_text(
+            "Optional rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="rules",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=["*"],
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("Optional rule", content)
+
+    def test_bundle_rules_with_multiple_globs(self):
+        """--rules accepts several globs; selection is their union."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "10-style.md").write_text("Style rule\n", encoding="utf-8")
+        (rules / "20-domain.md").write_text("Domain rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="globs",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=["00-*", "1*"],
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("Style rule", content)
+        self.assertNotIn("Domain rule", content)
+
+    def test_bundle_project_format_rule_replaces_builtin(self):
+        """When 00-file-output-format.md exists, no built-in fallback."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "00-file-output-format.md").write_text(
+            "# Project format rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="fmt",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=None,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("# Project format rule", content)
+        self.assertNotIn("default-file-output-format", content)
+
+    def test_bundle_with_query(self):
+        """--query appends the Question section to the bundle."""
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=["src/main.py"],
+            label="review",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=None,
+            query="Review this code please",
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("<!-- question -->", content)
+        self.assertIn("## Question", content)
+        self.assertIn("Review this code please", content)
+
+    def test_bundle_clip_copies_to_clipboard(self):
+        """--clip copies the bundle to the system clipboard."""
+        with patch("mdfs.commands.bundle.copy_to_clipboard") as mock_copy:
+            args = argparse.Namespace(
+                dir=str(self.project_root),
+                files=[],
+                label="clip",
+                system_prompt=None,
+                output=None,
+                no_preamble=False,
+                no_gitignore=False,
+                rules=None,
+                query=None,
+                clip=True,
+            )
+            cmd = BundleCommand(args)
+            cmd.execute()
+
+            mock_copy.assert_called_once()
+            copied = mock_copy.call_args[0][0]
+            self.assertIn("<!-- mdfs:rules:start -->", copied)
+
+    def test_bundle_rules_filename_ordering(self):
+        """Rules are ordered by file name (numeric prefixes pin the order)."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "20-second.md").write_text(
+            "Second rule in bundle\n", encoding="utf-8")
+        (rules / "10-first.md").write_text(
+            "First rule in bundle\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="order",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=["*"],
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertLess(content.find("First rule in bundle"),
+                        content.find("Second rule in bundle"))
+        # Each rule is framed with its file name
+        self.assertIn(
+            '<!-- mdfs:rule:start name="10-first.md" -->', content)
+        self.assertIn(
+            '<!-- mdfs:rule:end name="20-second.md" -->', content)
+
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 

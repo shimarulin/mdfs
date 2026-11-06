@@ -7,6 +7,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from ..config import Config
+from ..core.rules import DEFAULT_RULE_NAME, built_in_rule
 from .base import BaseCommand
 
 
@@ -26,9 +27,11 @@ class InitCommand(BaseCommand):
     def execute(self) -> int:
         """Execute the init command.
         
-        Creates .mdfsrc.yaml config file in the project directory.
-        Directories for contexts, responses, and rules are created automatically
-        when needed by bundle, paste, and other commands.
+        Creates .mdfsrc.yaml config file in the project directory and
+        writes the file output format rule (``00-file-output-format.md``)
+        into the rules directory. Directories for contexts and responses
+        are created automatically when needed by bundle, paste, and other
+        commands.
         
         Returns:
             Exit code (0 for success)
@@ -40,4 +43,15 @@ class InitCommand(BaseCommand):
             print(f"✅ Created .mdfsrc.yaml config file in {self.root}")
         else:
             print(f"⚠️  .mdfsrc.yaml already exists in {self.root}")
+
+        # Create the default rule file (unless configured otherwise)
+        config = Config(config_path)
+        rules_dir = config.get_rules_dir(self.root)
+        rule_path = rules_dir / DEFAULT_RULE_NAME
+        if rule_path.exists():
+            print(f"⚠️  Rule file already exists: {rule_path}")
+        else:
+            rules_dir.mkdir(parents=True, exist_ok=True)
+            rule_path.write_text(built_in_rule().body + "\n", encoding="utf-8")
+            print(f"✅ Created rule file: {rule_path}")
         return 0

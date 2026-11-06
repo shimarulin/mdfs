@@ -16,7 +16,6 @@ _mdfs() {
         '--dir[Project directory]:directory:_directories' \
         '--contexts-dir[Override contexts directory]:directory:_directories' \
         '--responses-dir[Override responses directory]:directory:_directories' \
-        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories' \
         '1:command:->command' \
         '*::arg:->args'
 
@@ -30,17 +29,21 @@ _mdfs() {
                 rules) ;;
                 bundle)
                     _arguments \
-                        '-f[Files to include]:*:file:_files' \
-                        '--files[Files to include]:*:file:_files' \
+                        '*:file:_files' \
                         '-l[Label for context file]:label:' \
                         '--label[Label for context file]:label:' \
                         '-s[System prompt file]:file:_files' \
                         '--system-prompt[System prompt file]:file:_files' \
                         '-o[Output file]:file:_files' \
                         '--output[Output file]:file:_files' \
+                        '-q[User question to append to the bundle]:query:' \
+                        '--query[User question to append to the bundle]:query:' \
+                        '--clip[Also copy the bundle to clipboard]' \
+                        '--rules[Include rules by filename globs]:glob:' \
+                        '--no-preamble[Disable preamble and table of contents]' \
+                        '--no-gitignore[Include gitignored files]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
-                        '--responses-dir[Override responses directory]:directory:_directories' \
-                        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories'
+                        '--responses-dir[Override responses directory]:directory:_directories'
                     ;;
                 paste)
                     _arguments \
@@ -50,8 +53,7 @@ _mdfs() {
                         '--extract[Also extract files]' \
                         '--dry-run[Show actions without writing]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
-                        '--responses-dir[Override responses directory]:directory:_directories' \
-                        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories'
+                        '--responses-dir[Override responses directory]:directory:_directories'
                     ;;
                 extract)
                     _arguments \
@@ -59,8 +61,7 @@ _mdfs() {
                         '--input[Input Markdown file]:file:_files' \
                         '--dry-run[Show actions without writing]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
-                        '--responses-dir[Override responses directory]:directory:_directories' \
-                        '--prompt-extensions-dir[Add prompt extension directory]:directory:_directories'
+                        '--responses-dir[Override responses directory]:directory:_directories'
                     ;;
                 log) ;;
             esac

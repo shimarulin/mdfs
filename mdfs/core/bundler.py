@@ -5,12 +5,22 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ..default_system_prompt import (
-    DEFAULT_SYSTEM_PROMPT,
-    PREAMBLE_TEXT,
-    QUICK_REMINDER_TEXT,
-)
+from ..default_system_prompt import PREAMBLE_TEXT, QUICK_REMINDER_TEXT
 from .gitignore import GitignoreFilter, is_binary_file
+
+# Footer for rules-only bundles (no files attached): tells the LLM that
+# the rules are persistent, not a one-message instruction.
+RULES_ONLY_FOOTER = (
+    "**These rules apply to the entire conversation, including all subsequent "
+    "messages, until explicitly revoked. Follow them in every reply.**"
+)
+
+# HTML-comment markers delimiting the rules block. Same idiom as the
+# <!-- file: ... --> / <!-- patch: ... --> markers: invisible in rendered
+# Markdown, still visible to the LLM as plain text, and machine-parseable
+# (the extract parser only matches file/patch, so they never interfere).
+RULES_START_MARKER = "<!-- mdfs:rules:start -->"
+RULES_END_MARKER = "<!-- mdfs:rules:end -->"
 
 
 def _detect_max_fence(content: str) -> int:
@@ -128,6 +138,23 @@ def _generate_table_of_contents(file_paths: list[str]) -> str:
     return "\n".join(lines)
 
 
+def _question_section(query: str) -> list[str]:
+    """Build the trailing Question section of the bundle document.
+
+    The `<!-- question -->` comment is intentionally NOT a parseable
+    marker: the extract parser only matches `file` and `patch` markers,
+    so the question section never interferes with extraction.
+    """
+    return [
+        "---",
+        "",
+        "<!-- question -->",
+        "## Question",
+        "",
+        query.strip(),
+    ]
+
+
 def bundle(
     base_dir: str | Path,
     file_paths: list[str],
@@ -136,19 +163,25 @@ def bundle(
     include_preamble: bool = True,
     respect_gitignore: bool = True,
     interactive: bool = True,
-    prompt_extensions: str | None = None,
+    rules: str | None = None,
+    query: str | None = None,
 ) -> str:
-    """Bundle project files into a single Markdown document.
+    """Bundle project rules and/or files into a single Markdown document.
     
     Args:
         base_dir: Base directory for file resolution
-        file_paths: List of files and/or directories to bundle
-        system_prompt: Optional system prompt to include
+        file_paths: List of files and/or directories to bundle. When empty,
+            a rules-only document is produced (no TOC, no file sections) —
+            useful at session start, before any files are sent to the chat
+        system_prompt: Optional system prompt to include (legacy mode,
+            used only when include_preamble is False)
         heading_level: Markdown heading level (default: 3)
         include_preamble: Whether to include mandatory format rules preamble
         respect_gitignore: Whether to respect .gitignore (default: True)
         interactive: Whether to ask for confirmation on ignored files
-        prompt_extensions: Optional extensions to append after DEFAULT_SYSTEM_PROMPT
+        rules: Rendered rules text (from .mdfs/rules/ or the built-in
+            fallback) inserted inside the mdfs:rules block
+        query: Optional user question appended at the end of the document
         
     Returns:
         Bundled markdown document as string
@@ -167,22 +200,39 @@ def bundle(
     
     parts: list[str] = []
 
+    # Rules-only mode: no files requested — bundle just the rules
+    # (same rules block as a full bundle, without TOC and file sections)
+    if not expanded_paths:
+        if include_preamble:
+            parts.append(PREAMBLE_TEXT.rstrip())
+            parts.append("")
+            if rules and rules.strip():
+                parts.append(RULES_START_MARKER)
+                parts.append("")
+                parts.append(rules.rstrip())
+                parts.append("")
+                parts.append(RULES_ONLY_FOOTER)
+                parts.append("")
+                parts.append(RULES_END_MARKER)
+        elif system_prompt:
+            # Legacy behavior: custom prompt without preamble
+            parts.append(system_prompt.rstrip())
+        if query and query.strip():
+            parts.append("")
+            parts.extend(_question_section(query))
+        return "\n".join(parts)
+
     # Add preamble if requested
     if include_preamble:
         parts.append(PREAMBLE_TEXT.rstrip())
         parts.append("")
-        parts.append("--- START OF RULES ---")
-        parts.append("")
-        parts.append(DEFAULT_SYSTEM_PROMPT.rstrip())
-        
-        # Add prompt extensions if provided
-        if prompt_extensions and prompt_extensions.strip():
+        if rules and rules.strip():
+            parts.append(RULES_START_MARKER)
             parts.append("")
-            parts.append(prompt_extensions.rstrip())
-        
-        parts.append("")
-        parts.append("--- END OF RULES ---")
-        parts.append("")
+            parts.append(rules.rstrip())
+            parts.append("")
+            parts.append(RULES_END_MARKER)
+            parts.append("")
         parts.append("**Now process the following document. Remember: do not echo the rules. Start directly with the requested output (e.g., file contents or confirmations).**")
         parts.append("")
         parts.append("---")
@@ -231,5 +281,9 @@ def bundle(
         parts.append(content)
         parts.append(fence)
         parts.append("")
+
+    # Append the user question, if provided
+    if query and query.strip():
+        parts.extend(_question_section(query))
 
     return "\n".join(parts)
