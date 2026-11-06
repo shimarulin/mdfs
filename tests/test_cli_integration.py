@@ -43,7 +43,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=["src/main.py", "src/utils.py"],
             label="initial setup",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -68,7 +67,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=["src/main.py"],
             label=None,
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -80,27 +78,6 @@ class TestBundleCommand(unittest.TestCase):
         self.assertEqual(len(contexts), 1)
         # Should be timestamp only (no __)
         self.assertNotIn("__", contexts[0].name)
-
-    def test_bundle_with_system_prompt(self):
-        """Test bundle includes system prompt in output."""
-        prompt_file = self.project_root / "system.md"
-        prompt_file.write_text("You are a helpful assistant.\n", encoding="utf-8")
-
-        args = argparse.Namespace(
-            dir=str(self.project_root),
-            files=["src/main.py"],
-            label="test",
-            system_prompt=str(prompt_file),
-            output=None,
-            no_preamble=True,
-            no_gitignore=False,
-        )
-        cmd = BundleCommand(args)
-        cmd.execute()
-
-        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
-        content = contexts[0].read_text(encoding="utf-8")
-        self.assertIn("You are a helpful assistant.", content)
 
     def test_bundle_rules_only(self):
         """Bundle without files: default glob 00-* + built-in fallback."""
@@ -114,7 +91,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=[],
             label="rules",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -148,7 +124,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=[],
             label="rules-plain",
-            system_prompt=None,
             output=None,
             no_preamble=True,
             no_gitignore=False,
@@ -181,7 +156,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=[],
             label="rules",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -206,7 +180,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=[],
             label="globs",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -232,7 +205,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=[],
             label="fmt",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -254,7 +226,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=["src/main.py"],
             label="review",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -278,7 +249,6 @@ class TestBundleCommand(unittest.TestCase):
                 dir=str(self.project_root),
                 files=[],
                 label="clip",
-                system_prompt=None,
                 output=None,
                 no_preamble=False,
                 no_gitignore=False,
@@ -305,7 +275,6 @@ class TestBundleCommand(unittest.TestCase):
             dir=str(self.project_root),
             files=[],
             label="order",
-            system_prompt=None,
             output=None,
             no_preamble=False,
             no_gitignore=False,
@@ -538,7 +507,6 @@ class TestFullWorkflow(unittest.TestCase):
                 dir=str(self.project_root),
                 files=["src/main.py"],
                 label="initial",
-                system_prompt=None,
                 output=None,
                 no_preamble=False,
                 no_gitignore=False,

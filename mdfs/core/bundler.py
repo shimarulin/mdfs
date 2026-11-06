@@ -158,7 +158,6 @@ def _question_section(query: str) -> list[str]:
 def bundle(
     base_dir: str | Path,
     file_paths: list[str],
-    system_prompt: str | None = None,
     heading_level: int = 3,
     include_preamble: bool = True,
     respect_gitignore: bool = True,
@@ -173,8 +172,6 @@ def bundle(
         file_paths: List of files and/or directories to bundle. When empty,
             a rules-only document is produced (no TOC, no file sections) —
             useful at session start, before any files are sent to the chat
-        system_prompt: Optional system prompt to include (legacy mode,
-            used only when include_preamble is False)
         heading_level: Markdown heading level (default: 3)
         include_preamble: Whether to include mandatory format rules preamble
         respect_gitignore: Whether to respect .gitignore (default: True)
@@ -208,7 +205,7 @@ def bundle(
         if include_preamble:
             parts.append(PREAMBLE_TEXT.rstrip())
             parts.append("")
-        if rules and rules.strip() and (include_preamble or not system_prompt):
+        if rules and rules.strip():
             parts.append(RULES_START_MARKER)
             parts.append("")
             parts.append(rules.rstrip())
@@ -216,9 +213,6 @@ def bundle(
             parts.append(RULES_ONLY_FOOTER)
             parts.append("")
             parts.append(RULES_END_MARKER)
-        elif system_prompt and not include_preamble:
-            # Legacy behavior: custom prompt without preamble
-            parts.append(system_prompt.rstrip())
         if query and query.strip():
             parts.append("")
             parts.extend(_question_section(query))
@@ -243,12 +237,6 @@ def bundle(
         toc = _generate_table_of_contents(expanded_paths)
         if toc:
             parts.append(toc)
-    elif system_prompt:
-        # Legacy behavior: if system_prompt is provided and preamble is disabled
-        parts.append(system_prompt.rstrip())
-        parts.append("")
-        parts.append("---")
-        parts.append("")
 
     heading_prefix = "#" * heading_level
 

@@ -28,10 +28,10 @@ _mdfs() {
         init) ;;
         bundle)
             case "$prev" in
-                -s|--system-prompt|-o|--output|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+                -o|--output|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
                 -l|--label|-q|--query) return ;;
             esac
-            COMPREPLY=($(compgen -W "-l --label -s --system-prompt -o --output -q --query --clip --rules --no-preamble --no-gitignore --contexts-dir --responses-dir --rules-dir" -- "$cur"))
+            COMPREPLY=($(compgen -W "-l --label -o --output -q --query --clip --rules --no-preamble --no-gitignore --contexts-dir --responses-dir --rules-dir" -- "$cur"))
             ;;
         paste)
             case "$prev" in

@@ -146,7 +146,6 @@ class CommandNameCommand:
 **Parameters**:
 - `files` (positional, optional): File paths or directories to include. **Without files, bundles only the rules** (rules-only mode for session start)
 - `-l, --label` (optional): Human-readable label for filename
-- `-s, --system-prompt` (optional): Custom system prompt file (legacy mode, with `--no-preamble`)
 - `-o, --output` (optional): Custom output path
 - `-q, --query` (optional): User question appended to the bundle
 - `--clip` (flag): Also copy the bundle to clipboard

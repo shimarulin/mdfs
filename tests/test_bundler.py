@@ -166,16 +166,6 @@ class TestBundle(unittest.TestCase):
         # The key is that it should not crash
         self.assertIsInstance(result, str)
 
-    def test_with_system_prompt(self):
-        result = bundle(self.tmpdir, ["src/main.py"], system_prompt="You are helpful.", include_preamble=False)
-        self.assertIn("You are helpful.", result)
-        self.assertIn("<!-- file: \"src/main.py\" -->", result)
-
-    def test_system_prompt_with_trailing_whitespace(self):
-        result = bundle(self.tmpdir, ["src/main.py"], system_prompt="Prompt  \n  ", include_preamble=False)
-        self.assertIn("Prompt", result)
-        self.assertNotIn("Prompt  ", result)
-
     def test_nested_fences_get_longer_fence(self):
         md_file = Path(self.tmpdir) / "doc.md"
         md_file.write_text("# Doc\n\n```python\nprint(1)\n```\n", encoding="utf-8")
@@ -234,11 +224,6 @@ class TestBundle(unittest.TestCase):
         result = bundle(self.tmpdir, ["fenced.md"])
         # Should use longer fence (````) since file has 3-backtick fence
         self.assertIn("````markdown", result)
-
-    def test_system_prompt_separator(self):
-        result = bundle(self.tmpdir, ["src/main.py"], system_prompt="Prompt")
-        lines = result.split("\n")
-        self.assertIn("---", lines)
 
     def test_base_dir_as_string(self):
         result = bundle(str(self.tmpdir), ["src/main.py"])
@@ -363,15 +348,6 @@ class TestBundle(unittest.TestCase):
         self.assertNotIn(RULES_START_MARKER, result)
         self.assertNotIn(RULES_END_MARKER, result)
         self.assertIn("MANDATORY FORMAT RULES", result)
-
-    def test_rules_only_mode_legacy_system_prompt(self):
-        """No files + --no-preamble + custom prompt: legacy branch."""
-        result = bundle(
-            self.tmpdir, [],
-            system_prompt="Custom prompt", include_preamble=False,
-        )
-        self.assertIn("Custom prompt", result)
-        self.assertNotIn(RULES_START_MARKER, result)
 
     # ----- question section -----
 
