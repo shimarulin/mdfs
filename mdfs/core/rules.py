@@ -22,11 +22,13 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
 
-from ..default_system_prompt import DEFAULT_SYSTEM_PROMPT
-
 # The built-in file output format rule: written into a project by
 # `mdfs init`, used as a fallback when absent from the rules directory.
 DEFAULT_RULE_NAME = "00-file-output-format.md"
+
+# Packaged copy of the rule — the single source of truth (a real file
+# inside the package, shipped via package-data; no duplicate constant).
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 # Default config selection (`rules_always`): only the file output
 # format rule — i.e. everything with the reserved `00-` prefix.
@@ -47,7 +49,8 @@ class Rule:
 
 def built_in_rule() -> Rule:
     """The packaged file output format rule (fallback / `mdfs init` template)."""
-    return Rule(name=BUILTIN_RULE_NAME, body=DEFAULT_SYSTEM_PROMPT.rstrip())
+    body = (DATA_DIR / DEFAULT_RULE_NAME).read_text(encoding="utf-8")
+    return Rule(name=BUILTIN_RULE_NAME, body=body.rstrip())
 
 
 def load_rules(rules_path: str | Path, patterns: list[str]) -> list[Rule]:

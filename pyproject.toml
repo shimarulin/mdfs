@@ -36,6 +36,9 @@ test = ["pytest>=8.0", "pytest-cov"]
 [tool.setuptools.packages.find]
 include = ["mdfs*"]
 
+[tool.setuptools.package-data]
+mdfs = ["data/*.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
