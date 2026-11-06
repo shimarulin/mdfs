@@ -201,20 +201,22 @@ def bundle(
     parts: list[str] = []
 
     # Rules-only mode: no files requested — bundle just the rules
-    # (same rules block as a full bundle, without TOC and file sections)
+    # (same rules block as a full bundle, without TOC and file sections).
+    # The rules block is the payload here: --no-preamble strips the
+    # preamble wrapper, not the rules themselves.
     if not expanded_paths:
         if include_preamble:
             parts.append(PREAMBLE_TEXT.rstrip())
             parts.append("")
-            if rules and rules.strip():
-                parts.append(RULES_START_MARKER)
-                parts.append("")
-                parts.append(rules.rstrip())
-                parts.append("")
-                parts.append(RULES_ONLY_FOOTER)
-                parts.append("")
-                parts.append(RULES_END_MARKER)
-        elif system_prompt:
+        if rules and rules.strip() and (include_preamble or not system_prompt):
+            parts.append(RULES_START_MARKER)
+            parts.append("")
+            parts.append(rules.rstrip())
+            parts.append("")
+            parts.append(RULES_ONLY_FOOTER)
+            parts.append("")
+            parts.append(RULES_END_MARKER)
+        elif system_prompt and not include_preamble:
             # Legacy behavior: custom prompt without preamble
             parts.append(system_prompt.rstrip())
         if query and query.strip():
