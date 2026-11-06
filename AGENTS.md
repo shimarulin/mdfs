@@ -157,8 +157,8 @@ class CommandNameCommand:
 **Output**: `.mdfs/contexts/<timestamp>__<label>.md`
 
 **Process**:
-1. Loads rules from `.mdfs/rules/` (filename order, overridden by frontmatter `priority`; `alwaysApply: false` only with `--all`)
-2. With files: prepends DEFAULT_SYSTEM_PROMPT + rules inside `--- START OF RULES ---` block, adds table of contents, marks each file with `<!-- file: path -->` markers
+1. Loads rules from `.mdfs/rules/` (filename order — numeric prefixes pin the sequence; `alwaysApply: false` only with `--all`)
+2. With files: prepends DEFAULT_SYSTEM_PROMPT + rules inside the `<!-- mdfs:rules:start -->` / `<!-- mdfs:rules:end -->` block (each rule framed by `mdfs:rule` start/end markers), adds table of contents, marks each file with `<!-- file: path -->` markers
 3. Without files: produces a rules-only document (rules block + persistence footer, no TOC, no file sections)
 4. With `-q/--query`: appends a `<!-- question -->` / `## Question` section at the end (not a parseable marker)
 5. With `--clip`: copies the document to the system clipboard
@@ -288,21 +288,21 @@ responses_dir: ".mdfs/responses"
 **Location**: `mdfs/core/rules.py`
 
 Rules are plain Markdown files loaded from `.mdfs/rules/` into every bundle.
-Only two frontmatter fields are defined (minimal frontmatter):
+Only one frontmatter field is defined (minimal frontmatter):
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `priority` | int | `0` | Sort order: higher goes first; ties keep filename order |
 | `alwaysApply` | bool | `true` | `false` = included only with `bundle --all` |
 
-**Ordering**: filesystem (filename) order is the base; frontmatter
-`priority` overrides it. No token budget, truncation or dropping — every
-included file is written to the bundle in full.
+**Ordering**: purely by file name — use numeric prefixes (`00-system.md`,
+`10-style.md`) to pin the sequence. No token budget, truncation or
+dropping — every included file is written to the bundle in full.
 
 **Key functions**:
 - `parse_frontmatter(text)` — minimal `key: value` frontmatter parser
-- `load_rules(root, include_all=False) -> list[Rule]` — load and sort rules
-- `render_rules(root, include_all=False) -> str` — bodies joined with blank lines
+- `load_rules(root, include_all=False) -> list[Rule]` — load rules in filename order
+- `render_rule(rule) -> str` — one rule framed by `mdfs:rule` start/end markers
+- `render_rules(root, include_all=False) -> str` — rule blocks joined with blank lines
 
 **Used by**: `BundleCommand` (passes `render_rules()` output to `bundle()`)
 
@@ -425,8 +425,8 @@ Responsible for:
 
 Responsible for:
 - Loading `.mdfs/rules/*.md` files
-- Parsing minimal frontmatter (`priority`, `alwaysApply`)
-- Sorting: filename order, overridden by `priority` (descending)
+- Parsing minimal frontmatter (`alwaysApply`)
+- Ordering: filename order (numeric prefixes), no priority field
 - Filtering `alwaysApply: false` rules unless `include_all=True`
 
 ---

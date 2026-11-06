@@ -19,6 +19,26 @@ RULES_ONLY_FOOTER = (
     "messages, until explicitly revoked. Follow them in every reply.**"
 )
 
+# HTML-comment markers delimiting the rules block. Same idiom as the
+# <!-- file: ... --> / <!-- patch: ... --> markers: invisible in rendered
+# Markdown, still visible to the LLM as plain text, and machine-parseable
+# (the extract parser only matches file/patch, so they never interfere).
+RULES_START_MARKER = "<!-- mdfs:rules:start -->"
+RULES_END_MARKER = "<!-- mdfs:rules:end -->"
+
+# Name of the built-in format rules inside the rules block (not a file
+# from .mdfs/rules/ — hence no .md suffix).
+BUILTIN_PROMPT_RULE_NAME = "default-system-prompt"
+
+
+def _builtin_prompt_block() -> list[str]:
+    """Wrap DEFAULT_SYSTEM_PROMPT in mdfs:rule start/end markers."""
+    return [
+        f'<!-- mdfs:rule:start name="{BUILTIN_PROMPT_RULE_NAME}" -->',
+        DEFAULT_SYSTEM_PROMPT.rstrip(),
+        f'<!-- mdfs:rule:end name="{BUILTIN_PROMPT_RULE_NAME}" -->',
+    ]
+
 
 def _detect_max_fence(content: str) -> int:
     max_len = 0
@@ -177,7 +197,7 @@ def bundle(
         respect_gitignore: Whether to respect .gitignore (default: True)
         interactive: Whether to ask for confirmation on ignored files
         rules: Rules text (from .mdfs/rules/) inserted inside the
-            START/END OF RULES block after DEFAULT_SYSTEM_PROMPT
+            mdfs:rules block after DEFAULT_SYSTEM_PROMPT
         query: Optional user question appended at the end of the document
         
     Returns:
@@ -203,16 +223,16 @@ def bundle(
         if include_preamble:
             parts.append(PREAMBLE_TEXT.rstrip())
             parts.append("")
-            parts.append("--- START OF RULES ---")
+            parts.append(RULES_START_MARKER)
             parts.append("")
-            parts.append(DEFAULT_SYSTEM_PROMPT.rstrip())
+            parts.extend(_builtin_prompt_block())
             if rules and rules.strip():
                 parts.append("")
                 parts.append(rules.rstrip())
             parts.append("")
-            parts.append("--- END OF RULES ---")
-            parts.append("")
             parts.append(RULES_ONLY_FOOTER)
+            parts.append("")
+            parts.append(RULES_END_MARKER)
         elif system_prompt:
             # Legacy behavior: custom prompt without preamble
             parts.append(system_prompt.rstrip())
@@ -225,9 +245,9 @@ def bundle(
     if include_preamble:
         parts.append(PREAMBLE_TEXT.rstrip())
         parts.append("")
-        parts.append("--- START OF RULES ---")
+        parts.append(RULES_START_MARKER)
         parts.append("")
-        parts.append(DEFAULT_SYSTEM_PROMPT.rstrip())
+        parts.extend(_builtin_prompt_block())
         
         # Add rules from .mdfs/rules/ if provided
         if rules and rules.strip():
@@ -235,7 +255,7 @@ def bundle(
             parts.append(rules.rstrip())
         
         parts.append("")
-        parts.append("--- END OF RULES ---")
+        parts.append(RULES_END_MARKER)
         parts.append("")
         parts.append("**Now process the following document. Remember: do not echo the rules. Start directly with the requested output (e.g., file contents or confirmations).**")
         parts.append("")

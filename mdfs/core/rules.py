@@ -1,17 +1,18 @@
 """MDFS rules loading — .mdfs/rules/ directory with minimal frontmatter.
 
-Rules are plain Markdown files in .mdfs/rules/. Their order is controlled
-by the filesystem (file names) and can be overridden by a single
-`priority` field in a minimal YAML frontmatter:
+Rules are plain Markdown files in .mdfs/rules/. Their order is fully
+controlled by the filesystem (file names) — use numeric prefixes
+(`00-system.md`, `10-style.md`) to pin the sequence.
+
+The only frontmatter field defined is:
 
     ---
-    priority: 100        # higher = earlier in the bundle (default: 0)
     alwaysApply: false   # include only with `bundle --all` (default: true)
     ---
 
 No other frontmatter fields are defined; the rest of the file body is
 included verbatim in the bundle. Files without frontmatter are always
-included and keep filesystem order (backward compatible).
+included (backward compatible).
 """
 
 from __future__ import annotations
@@ -27,7 +28,6 @@ class Rule:
     """A single rule file loaded from .mdfs/rules/."""
 
     name: str           # file name relative to the rules directory
-    priority: int       # sort priority: higher goes first
     always_apply: bool  # whether the rule is included without `--all`
     body: str           # Markdown content without frontmatter
 
@@ -79,27 +79,22 @@ def _load_rule_file(path: Path) -> Rule | None:
     meta, body = parse_frontmatter(content)
     if not body.strip():
         return None
-    try:
-        priority = int(meta.get("priority", "0").strip() or "0")
-    except ValueError:
-        priority = 0
     always_apply = meta.get("alwaysApply", "true").strip().lower() not in (
         "false", "no", "0", "off",
     )
     return Rule(
         name=path.name,
-        priority=priority,
         always_apply=always_apply,
         body=body.strip(),
     )
 
 
 def load_rules(root: str | Path, include_all: bool = False) -> list[Rule]:
-    """Load rule files from <root>/.mdfs/rules/.
+    """Load rule files from <root>/.mdfs/rules/ in filename order.
 
-    Rules are sorted by descending frontmatter `priority`, ties broken
-    by file name (filesystem order). Files without frontmatter get
-    priority 0 and alwaysApply=true, so they are always included.
+    Use numeric file-name prefixes (`00-system.md`, `10-style.md`) to
+    control bundle order. Files without frontmatter get alwaysApply=true,
+    so they are always included.
 
     Args:
         root: Project root directory
@@ -122,20 +117,40 @@ def load_rules(root: str | Path, include_all: bool = False) -> list[Rule]:
         if not include_all and not rule.always_apply:
             continue
         loaded.append(rule)
-    loaded.sort(key=lambda r: (-r.priority, r.name))
     return loaded
+
+
+def render_rule(rule: Rule) -> str:
+    """Render a single rule wrapped in HTML-comment markers.
+
+    Args:
+        rule: Rule to render
+
+    Returns:
+        Rule body framed by `<!-- mdfs:rule:start name="..." -->` and
+        `<!-- mdfs:rule:end name="..." -->` markers
+    """
+    return (
+        f'<!-- mdfs:rule:start name="{rule.name}" -->\n'
+        f"{rule.body}\n"
+        f'<!-- mdfs:rule:end name="{rule.name}" -->'
+    )
 
 
 def render_rules(root: str | Path, include_all: bool = False) -> str:
     """Render .mdfs/rules/ content for inclusion into a bundle.
 
-    Rule bodies are joined with blank lines; frontmatter is stripped.
+    Each rule is framed by `mdfs:rule` start/end HTML-comment markers
+    (same idiom as the `<!-- file: ... -->` markers); rules are joined
+    with blank lines and frontmatter is stripped.
 
     Args:
         root: Project root directory
         include_all: Also include rules with `alwaysApply: false`
 
     Returns:
-        Concatenated rule bodies (empty string if no rules found)
+        Concatenated rule blocks (empty string if no rules found)
     """
-    return "\n\n".join(r.body for r in load_rules(root, include_all=include_all))
+    return "\n\n".join(
+        render_rule(r) for r in load_rules(root, include_all=include_all)
+    )

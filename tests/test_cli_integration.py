@@ -127,7 +127,7 @@ class TestBundleCommand(unittest.TestCase):
         contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
         self.assertEqual(len(contexts), 1)
         content = contexts[0].read_text(encoding="utf-8")
-        self.assertIn("--- START OF RULES ---", content)
+        self.assertIn("<!-- mdfs:rules:start -->", content)
         self.assertIn("Always answer briefly.", content)
         # alwaysApply: false rules are excluded without --all
         self.assertNotIn("Optional rule", content)
@@ -203,15 +203,15 @@ class TestBundleCommand(unittest.TestCase):
 
             mock_copy.assert_called_once()
             copied = mock_copy.call_args[0][0]
-            self.assertIn("--- START OF RULES ---", copied)
+            self.assertIn("<!-- mdfs:rules:start -->", copied)
 
-    def test_bundle_priority_ordering_from_frontmatter(self):
-        """Rules are ordered by frontmatter priority, then file name."""
+    def test_bundle_rules_filename_ordering(self):
+        """Rules are ordered by file name (numeric prefixes pin the order)."""
         rules = self.project_root / ".mdfs" / "rules"
-        (rules / "a_low.md").write_text(
-            "---\npriority: 1\n---\nLow priority rule\n", encoding="utf-8")
-        (rules / "z_high.md").write_text(
-            "---\npriority: 10\n---\nHigh priority rule\n", encoding="utf-8")
+        (rules / "20-second.md").write_text(
+            "Second rule in bundle\n", encoding="utf-8")
+        (rules / "10-first.md").write_text(
+            "First rule in bundle\n", encoding="utf-8")
 
         args = argparse.Namespace(
             dir=str(self.project_root),
@@ -230,8 +230,13 @@ class TestBundleCommand(unittest.TestCase):
 
         contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
         content = contexts[0].read_text(encoding="utf-8")
-        self.assertLess(content.find("High priority rule"),
-                        content.find("Low priority rule"))
+        self.assertLess(content.find("First rule in bundle"),
+                        content.find("Second rule in bundle"))
+        # Each rule is framed with its file name
+        self.assertIn(
+            '<!-- mdfs:rule:start name="10-first.md" -->', content)
+        self.assertIn(
+            '<!-- mdfs:rule:end name="20-second.md" -->', content)
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)

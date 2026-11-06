@@ -189,20 +189,17 @@ responses_dir: ".mdfs/responses"
 MDFS includes project rules in every bundle. Rules are plain Markdown
 files in `.mdfs/rules/` — no configuration needed.
 
-**Ordering** is controlled by the filesystem and frontmatter:
+**Ordering** is fully controlled by the filesystem:
 
 1. Files are loaded in **filename order** — use numeric prefixes
-   (`10-style.md`, `20-domain.md`) to control the sequence
-2. A minimal frontmatter `priority` overrides filename order
-   (higher priority goes first; ties keep filename order)
-3. `alwaysApply: false` marks a rule as optional — it is included
+   (`00-system.md`, `10-style.md`, `20-domain.md`) to pin the sequence
+2. `alwaysApply: false` marks a rule as optional — it is included
    only with `bundle --all`
 
-That's the whole frontmatter — only two fields are defined:
+That's the whole frontmatter — a single optional field:
 
 ```markdown
 ---
-priority: 100        # higher = earlier in the bundle (default: 0)
 alwaysApply: true    # false = include only with `bundle --all` (default: true)
 ---
 # Answer style
@@ -212,12 +209,13 @@ alwaysApply: true    # false = include only with `bundle --all` (default: true)
 ```
 
 **Notes:**
-- Files without frontmatter are always included and keep filename order
-  (backward compatible)
+- Files without frontmatter are always included (backward compatible)
 - Rule bodies are joined with blank lines; frontmatter is stripped
 - Non-markdown files, empty files and frontmatter-only files are skipped
-- Rules are inserted inside the `--- START OF RULES ---` block, after the
-  built-in MDFS format rules
+- Rules are inserted inside the rules block delimited by
+  `<!-- mdfs:rules:start -->` / `<!-- mdfs:rules:end -->` HTML-comment
+  markers, after the built-in MDFS format rules; each rule is framed by
+  `<!-- mdfs:rule:start name="file.md" -->` / `<!-- mdfs:rule:end ... -->`
 - There is no token budget, truncation or dropping: every included rule
   file is written to the bundle in full
 
@@ -455,7 +453,7 @@ paste at session start covers all subsequent messages.
 your-project/
 ├── .mdfs/
 │   ├── rules/
-│   │   └── mdfs-system.md      ← LLM instructions (in git)
+│   │   └── 00-file-output-format.md  ← LLM instructions (in git)
 │   ├── contexts/                ← generated, gitignored
 │   └── responses/               ← generated, gitignored
 ├── PROJECT.md                   ← project manifest (always in LLM slot 1)

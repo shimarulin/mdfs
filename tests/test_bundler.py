@@ -5,7 +5,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mdfs.core.bundler import bundle, _detect_max_fence, _lang_for_ext
+from mdfs.core.bundler import (
+    RULES_END_MARKER,
+    RULES_START_MARKER,
+    bundle,
+    _detect_max_fence,
+    _lang_for_ext,
+)
+from mdfs.core.rules import render_rules
 
 
 class TestDetectMaxFence(unittest.TestCase):
@@ -179,8 +186,8 @@ class TestBundle(unittest.TestCase):
         """Empty file list produces a rules-only document (no file sections)."""
         result = bundle(self.tmpdir, [])
         self.assertIsInstance(result, str)
-        self.assertIn("--- START OF RULES ---", result)
-        self.assertIn("--- END OF RULES ---", result)
+        self.assertIn(RULES_START_MARKER, result)
+        self.assertIn(RULES_END_MARKER, result)
         self.assertNotIn("print('hello')", result)
         self.assertNotIn("## Содержание", result)
         self.assertNotIn("Now process the following document", result)
@@ -257,8 +264,8 @@ class TestBundle(unittest.TestCase):
         """Test bundle with preamble enabled (default)."""
         result = bundle(self.tmpdir, ["src/main.py"], include_preamble=True)
         self.assertIn("MANDATORY FORMAT RULES", result)
-        self.assertIn("--- START OF RULES ---", result)
-        self.assertIn("--- END OF RULES ---", result)
+        self.assertIn(RULES_START_MARKER, result)
+        self.assertIn(RULES_END_MARKER, result)
         self.assertIn("QUICK REMINDER", result)
         self.assertIn("## Содержание", result)
         self.assertIn("<!-- file: \"src/main.py\" -->", result)
@@ -267,7 +274,7 @@ class TestBundle(unittest.TestCase):
         """Test bundle with preamble disabled."""
         result = bundle(self.tmpdir, ["src/main.py"], include_preamble=False)
         self.assertNotIn("MANDATORY FORMAT RULES", result)
-        self.assertNotIn("--- START OF RULES ---", result)
+        self.assertNotIn(RULES_START_MARKER, result)
         self.assertNotIn("QUICK REMINDER", result)
         self.assertNotIn("## Содержание", result)
         self.assertIn("<!-- file: \"src/main.py\" -->", result)
@@ -296,14 +303,34 @@ class TestBundle(unittest.TestCase):
     # ----- rules from .mdfs/rules/ -----
 
     def test_rules_included_in_full_bundle(self):
-        """Rules text is inserted inside the START/END OF RULES block."""
+        """Rules text is inserted inside the mdfs:rules block."""
         result = bundle(self.tmpdir, ["src/main.py"], rules="My custom rule")
-        rules_start = result.find("--- START OF RULES ---")
-        rules_end = result.find("--- END OF RULES ---")
+        rules_start = result.find(RULES_START_MARKER)
+        rules_end = result.find(RULES_END_MARKER)
         self.assertTrue(0 < rules_start < rules_end)
         block = result[rules_start:rules_end]
         self.assertIn("My custom rule", block)
         self.assertIn("MANDATORY FORMAT RULES", result)
+
+    def test_rules_block_markers_and_rule_framing(self):
+        """Rules block uses mdfs:rules markers; prompt and rules are framed."""
+        rules_dir = Path(self.tmpdir) / ".mdfs" / "rules"
+        rules_dir.mkdir(parents=True)
+        (rules_dir / "rule.md").write_text("My custom rule", encoding="utf-8")
+        result = bundle(
+            self.tmpdir, ["src/main.py"],
+            rules=render_rules(self.tmpdir),
+        )
+        self.assertIn(RULES_START_MARKER, result)
+        self.assertIn(RULES_END_MARKER, result)
+        # Built-in prompt is framed as a named rule
+        self.assertIn(
+            '<!-- mdfs:rule:start name="default-system-prompt" -->', result)
+        self.assertIn(
+            '<!-- mdfs:rule:end name="default-system-prompt" -->', result)
+        # Project rules are framed with their file name
+        self.assertIn('<!-- mdfs:rule:start name="rule.md" -->', result)
+        self.assertIn('<!-- mdfs:rule:end name="rule.md" -->', result)
 
     def test_rules_empty_not_added(self):
         """Empty/whitespace rules text does not add a blank section."""
@@ -316,8 +343,8 @@ class TestBundle(unittest.TestCase):
     def test_rules_only_mode(self):
         """No files: rules-only document without TOC and file sections."""
         result = bundle(self.tmpdir, [], rules="Rule A\n\nRule B")
-        self.assertIn("--- START OF RULES ---", result)
-        self.assertIn("--- END OF RULES ---", result)
+        self.assertIn(RULES_START_MARKER, result)
+        self.assertIn(RULES_END_MARKER, result)
         self.assertIn("Rule A\n\nRule B", result)
         self.assertIn("apply to the entire conversation", result)
         self.assertNotIn("## Содержание", result)
@@ -328,8 +355,8 @@ class TestBundle(unittest.TestCase):
     def test_rules_only_mode_without_rules(self):
         """Rules-only mode works even when no rules are configured."""
         result = bundle(self.tmpdir, [])
-        self.assertIn("--- START OF RULES ---", result)
-        self.assertIn("--- END OF RULES ---", result)
+        self.assertIn(RULES_START_MARKER, result)
+        self.assertIn(RULES_END_MARKER, result)
 
     def test_rules_only_mode_legacy_system_prompt(self):
         """No files + --no-preamble + custom prompt: legacy branch."""
@@ -338,7 +365,7 @@ class TestBundle(unittest.TestCase):
             system_prompt="Custom prompt", include_preamble=False,
         )
         self.assertIn("Custom prompt", result)
-        self.assertNotIn("--- START OF RULES ---", result)
+        self.assertNotIn(RULES_START_MARKER, result)
 
     # ----- question section -----
 
@@ -350,7 +377,7 @@ class TestBundle(unittest.TestCase):
         self.assertIn("What is this project?", result)
         # Question goes after the rules block
         self.assertGreater(
-            result.find("## Question"), result.find("--- END OF RULES ---"))
+            result.find("## Question"), result.find(RULES_END_MARKER))
 
     def test_question_in_full_bundle(self):
         """--query with files appends the Question after the file sections."""
