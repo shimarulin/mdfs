@@ -22,7 +22,8 @@ class Config:
     
     Searches for .mdfsrc.yaml starting from current directory and moving up
     to the filesystem root. Configuration can override default paths for
-    contexts, responses, and define directories for system prompt extensions.
+    contexts and responses. System prompt rules always come from the
+    built-in .mdfs/rules/ directory (see mdfs/core/rules.py).
     """
 
     def __init__(self, config_path: Path | None = None):
@@ -133,93 +134,6 @@ class Config:
             path = base_dir / path
         return path.resolve()
 
-    def get_prompt_extensions_dirs(
-        self, base_dir: Path | None = None,
-    ) -> list[Path]:
-        """Get directories containing system prompt extensions.
-        
-        Returns list of directory paths that contain markdown files to be
-        appended to the system prompt. Directories are resolved relative to
-        the configuration file directory.
-        
-        By default, includes .mdfs/rules/ if it exists (built-in extensions).
-        Configuration and command-line overrides are appended (cumulative).
-        
-        Args:
-            base_dir: Base directory for relative paths (defaults to config directory)
-            
-        Returns:
-            List of Path objects for prompt extension directories
-        """
-        if base_dir is None:
-            base_dir = self.config_path.parent if self.config_path else Path.cwd()
-
-        result: list[Path] = []
-        seen: set[Path] = set()
-
-        # Step 1: Add built-in .mdfs/rules/ directory (always first)
-        default_rules_dir = base_dir / ".mdfs" / "rules"
-        if default_rules_dir.exists():
-            resolved = default_rules_dir.resolve()
-            if resolved not in seen:
-                result.append(resolved)
-                seen.add(resolved)
-
-        # Step 2: Add extensions from configuration file
-        extensions_config = self.config_data.get("prompt_extensions", [])
-        if extensions_config:
-            if not isinstance(extensions_config, list):
-                extensions_config = [extensions_config]
-
-            for ext_dir in extensions_config:
-                path = Path(ext_dir)
-                if not path.is_absolute():
-                    path = base_dir / path
-                resolved = path.resolve()
-                if resolved not in seen:
-                    result.append(resolved)
-                    seen.add(resolved)
-
-        return result
-
-    def load_prompt_extensions(
-        self, base_dir: Path | None = None,
-    ) -> str:
-        """Load and concatenate all markdown files from extension directories.
-        
-        Reads all .md files from directories specified in prompt_extensions config,
-        sorted alphabetically within each directory. Files are joined with blank lines.
-        
-        Args:
-            base_dir: Base directory for relative paths
-            
-        Returns:
-            Concatenated content of all extension files (empty string if none found)
-        """
-        dirs = self.get_prompt_extensions_dirs(base_dir)
-        if not dirs:
-            return ""
-
-        extensions: list[str] = []
-
-        for ext_dir in dirs:
-            if not ext_dir.exists():
-                continue
-
-            # Collect all .md files in this directory
-            md_files = sorted(ext_dir.glob("*.md"))
-            for md_file in md_files:
-                if md_file.is_file():
-                    try:
-                        content = md_file.read_text(encoding="utf-8")
-                        if content.strip():
-                            extensions.append(content)
-                    except OSError:
-                        # Skip files that can't be read
-                        continue
-
-        return "\n\n".join(extensions) if extensions else ""
-
     def is_configured(self) -> bool:
         """Check if a configuration file was found.
         
@@ -232,7 +146,6 @@ class Config:
         self,
         contexts_dir: str | None = None,
         responses_dir: str | None = None,
-        prompt_extensions_dirs: list[str] | None = None,
     ) -> None:
         """Override configuration with command-line arguments.
         
@@ -241,14 +154,11 @@ class Config:
         Args:
             contexts_dir: Override contexts directory path
             responses_dir: Override responses directory path
-            prompt_extensions_dirs: Additional or replacement extension directories
         """
         if contexts_dir is not None:
             self.config_data["contexts_dir"] = contexts_dir
         if responses_dir is not None:
             self.config_data["responses_dir"] = responses_dir
-        if prompt_extensions_dirs is not None:
-            self.config_data["prompt_extensions"] = prompt_extensions_dirs
 
     @staticmethod
     def create_default_config(path: Path) -> None:
@@ -265,13 +175,6 @@ contexts_dir: ".mdfs/contexts"
 
 # Directory for LLM response files
 responses_dir: ".mdfs/responses"
-
-# Directories containing markdown files to append to system prompt
-# Files are loaded in order, sorted alphabetically within each directory
-prompt_extensions: []
-  # Example:
-  # - ".mdfs/extensions"
-  # - "docs/mdfs-prompts"
 """
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")

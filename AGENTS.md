@@ -59,6 +59,7 @@ mdfs/
 └── core/                   # Core functionality modules
     ├── __init__.py
     ├── bundler.py          # File bundling logic
+    ├── rules.py            # Rules loading (.mdfs/rules/ + frontmatter)
     ├── extractor.py        # File extraction and patching logic
     ├── parser.py           # Markdown marker parsing
     └── gitignore.py        # .gitignore handling
@@ -136,27 +137,32 @@ class CommandNameCommand:
 
 ---
 
-#### `mdfs bundle` — Pack Files for LLM
+#### `mdfs bundle` — Pack Rules and Files for LLM
 
 **Class**: `BundleCommand` (`mdfs/commands/bundle.py`)
 
-**Purpose**: Pack project files into single Markdown document
+**Purpose**: Pack `.mdfs/rules/` and project files into a single Markdown document
 
 **Parameters**:
-- `files` (positional, required): File paths or directories to include
+- `files` (positional, optional): File paths or directories to include. **Without files, bundles only the rules** (rules-only mode for session start)
 - `-l, --label` (optional): Human-readable label for filename
-- `-s, --system-prompt` (optional): Custom system prompt file
+- `-s, --system-prompt` (optional): Custom system prompt file (legacy mode, with `--no-preamble`)
 - `-o, --output` (optional): Custom output path
+- `-q, --query` (optional): User question appended to the bundle
+- `--clip` (flag): Also copy the bundle to clipboard
+- `--all` (flag): Include rules with `alwaysApply: false`
 - `--no-preamble` (flag): Disable preamble and table of contents
 - `--no-gitignore` (flag): Include .gitignore'd files
 
 **Output**: `.mdfs/contexts/<timestamp>__<label>.md`
 
 **Process**:
-1. Prepends DEFAULT_SYSTEM_PROMPT
-2. Includes table of contents
-3. Marks each file with `<!-- file: path -->` markers
-4. Saves to contexts directory with timestamp
+1. Loads rules from `.mdfs/rules/` (filename order, overridden by frontmatter `priority`; `alwaysApply: false` only with `--all`)
+2. With files: prepends DEFAULT_SYSTEM_PROMPT + rules inside `--- START OF RULES ---` block, adds table of contents, marks each file with `<!-- file: path -->` markers
+3. Without files: produces a rules-only document (rules block + persistence footer, no TOC, no file sections)
+4. With `-q/--query`: appends a `<!-- question -->` / `## Question` section at the end (not a parseable marker)
+5. With `--clip`: copies the document to the system clipboard
+6. Saves to contexts directory with timestamp
 
 ---
 
@@ -257,10 +263,13 @@ class CommandNameCommand:
 
 ### Overview
 
-MDFS now supports configuration via `.mdfsrc.yaml` file, allowing users to:
+MDFS supports configuration via `.mdfsrc.yaml` file, allowing users to:
 - Customize `contexts_dir` and `responses_dir` paths
-- Define directories with markdown files for system prompt extensions
 - Work with non-standard project structures
+
+System prompt rules always come from the built-in `.mdfs/rules/` directory
+(see [Rules Directory](#rules-directory-mdfsrules)) — they are not
+configurable via `.mdfsrc.yaml`.
 
 The configuration file is searched starting from the current working directory upward to the filesystem root.
 
@@ -272,55 +281,37 @@ contexts_dir: ".mdfs/contexts"
 
 # Directory for LLM response files (default: .mdfs/responses)
 responses_dir: ".mdfs/responses"
-
-# Directories containing .md files for system prompt extensions
-# Files are loaded alphabetically, joined with blank lines
-# NOTE: .mdfs/rules/ is always included by default (if it exists)
-prompt_extensions:
-  - ".mdfs/extensions"
-  - "docs/mdfs-prompts"
 ```
+
+### Rules Directory (`.mdfs/rules/`)
+
+**Location**: `mdfs/core/rules.py`
+
+Rules are plain Markdown files loaded from `.mdfs/rules/` into every bundle.
+Only two frontmatter fields are defined (minimal frontmatter):
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `priority` | int | `0` | Sort order: higher goes first; ties keep filename order |
+| `alwaysApply` | bool | `true` | `false` = included only with `bundle --all` |
+
+**Ordering**: filesystem (filename) order is the base; frontmatter
+`priority` overrides it. No token budget, truncation or dropping — every
+included file is written to the bundle in full.
+
+**Key functions**:
+- `parse_frontmatter(text)` — minimal `key: value` frontmatter parser
+- `load_rules(root, include_all=False) -> list[Rule]` — load and sort rules
+- `render_rules(root, include_all=False) -> str` — bodies joined with blank lines
+
+**Used by**: `BundleCommand` (passes `render_rules()` output to `bundle()`)
 
 ### Usage
 
 1. Create `.mdfsrc.yaml` in project root (or run `mdfs init`)
 2. Customize paths as needed
-3. Add markdown files to `prompt_extensions` directories
-4. Files are automatically loaded and appended to system prompt
-
-### Prompt Extensions Priority (Cumulative)
-
-Prompt extensions are loaded in this order (**all are included, not replaced**):
-
-1. **Built-in (.mdfs/rules/)**: Default directory created by `mdfs init`
-   - Automatically loaded if directory exists
-   - Always included first
-   
-2. **Configuration (.mdfsrc.yaml)**: User-defined directories
-   - Appended to built-in extensions
-   - Can add custom prompt rules
-   
-3. **Command-line Overrides (--prompt-extensions-dir)**: CLI flags
-   - Appended to configuration extensions
-   - Useful for temporary additions
-
-**Example flow:**
-```
-.mdfs/rules/          → Always loaded (built-in)
-  ├── prompt1.md
-  └── prompt2.md
-
-.mdfsrc.yaml:
-  prompt_extensions:
-    - "docs/custom"   → Loaded after built-in
-
-mdfs bundle src/ --prompt-extensions-dir "./tmp"
-                      → Loaded last (CLI override)
-
-Result: prompt1.md + prompt2.md + docs/custom/* + ./tmp/*
-```
-
-**No duplicates**: If same directory appears in multiple levels, it's loaded only once (first occurrence).
+3. Place rule files in `.mdfs/rules/` (frontmatter optional)
+4. Rules are automatically included in every `mdfs bundle` invocation
 
 ### Configuration Class
 
@@ -330,11 +321,9 @@ Result: prompt1.md + prompt2.md + docs/custom/* + ./tmp/*
 - `Config()` — Load config from `.mdfsrc.yaml`
 - `get_contexts_dir(base_dir)` — Get contexts directory path
 - `get_responses_dir(base_dir)` — Get responses directory path
-- `get_prompt_extensions_dirs(base_dir)` — Get list of extension directories
-- `load_prompt_extensions(base_dir)` — Load and concatenate extension files
 - `is_configured()` — Check if config file exists
 - `create_default_config(path)` — Create default `.mdfsrc.yaml`
-- `override(contexts_dir, responses_dir, prompt_extensions_dirs)` — Override config with command-line arguments (takes precedence over `.mdfsrc.yaml`)
+- `override(contexts_dir, responses_dir)` — Override config with command-line arguments (takes precedence over `.mdfsrc.yaml`)
 
 ### Command-line Config Overrides
 
@@ -342,7 +331,6 @@ All commands support global flags to override configuration values (take precede
 
 - `--contexts-dir PATH` — Override contexts directory
 - `--responses-dir PATH` — Override responses directory
-- `--prompt-extensions-dir PATH` — Add/override prompt extension directories (can be used multiple times)
 
 **Example usage:**
 ```bash
@@ -383,10 +371,12 @@ See `mdfs/utils.py` source for additional helper functions (validation, path han
 Responsible for:
 - Reading project files
 - Formatting with MDFS markers
-- Building context files with system prompt
+- Building context files with system prompt and rules
+- Rules-only mode (no files) and trailing Question section (`-q/--query`)
 
-**Key Classes**:
-- `Bundler` — Main bundling logic
+**Key functions**:
+- `bundle()` — Main bundling logic
+- `RULES_ONLY_FOOTER` — persistence note appended in rules-only mode
 
 ### `mdfs/core/extractor.py` — File Extraction & Patching
 
@@ -431,6 +421,14 @@ Responsible for:
 - Determining if a path should be ignored
 - Building file lists for bundling
 
+### `mdfs/core/rules.py` — Rules Loading
+
+Responsible for:
+- Loading `.mdfs/rules/*.md` files
+- Parsing minimal frontmatter (`priority`, `alwaysApply`)
+- Sorting: filename order, overridden by `priority` (descending)
+- Filtering `alwaysApply: false` rules unless `include_all=True`
+
 ---
 
 ## Testing
@@ -454,6 +452,7 @@ uv run --extra test pytest --cov=mdfs --cov-report=term-missing
 tests/
 ├── test_init_and_log.py        # init, log commands
 ├── test_bundler.py             # bundling logic
+├── test_rules.py               # rules loading (.mdfs/rules/) [NEW]
 ├── test_extractor.py           # extraction and patching
 ├── test_parser.py              # marker parsing
 ├── test_cli_integration.py      # end-to-end CLI tests
@@ -628,7 +627,7 @@ Before committing changes:
 ```
 .mdfs/
 ├── .gitignore              # Prevents contexts/ and responses/ from being tracked
-├── rules/                  # Directory for system prompt rules
+├── rules/                  # System prompt rules (.md files, optional frontmatter)
 ├── contexts/               # Generated context files (gitignored)
 │   └── <timestamp>__<label>.md
 └── responses/              # Generated response files (gitignored)
@@ -689,6 +688,6 @@ Used in:
 
 ---
 
-**Last Updated**: 2026-04-10
+**Last Updated**: 2026-11-07
 
 **Document Status**: Living document. Update whenever making changes to commands, functions, or architecture.

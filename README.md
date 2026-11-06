@@ -24,6 +24,8 @@ with special markers, so the LLM can read and produce them correctly.
 **Key features:**
 
 - **Bundle** any number of project files into a single `.md`
+- **Rules** — project rules from `.mdfs/rules/` in every bundle; rules-only
+  bundles for session start, ready to paste into chats without attachments
 - **Extract** files from LLM responses back to disk
 - **Fuzzy patch** — apply unified diffs even when line numbers are wrong
   (LLMs are notoriously bad at counting lines)
@@ -143,7 +145,6 @@ mdfs log
 
 MDFS supports optional configuration via `.mdfsrc.yaml` file, allowing you to:
 - Use custom directories for bundled contexts and LLM responses
-- Define markdown files to extend the system prompt
 - Work with non-standard project structures
 
 ### Configuration File (`.mdfsrc.yaml`)
@@ -156,14 +157,12 @@ The configuration file is automatically searched starting from your current dire
 mdfs bundle src/ --contexts-dir ./my-contexts
 mdfs paste response --responses-dir ./my-responses -x
 mdfs log --contexts-dir ./my-contexts
-mdfs bundle src/ --prompt-extensions-dir ./.mdfs/extra-prompts --prompt-extensions-dir ./docs/prompts
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--contexts-dir` | Override contexts directory path |
 | `--responses-dir` | Override responses directory path |
-| `--prompt-extensions-dir` | Add/override prompt extension directories (can be used multiple times) |
 
 **Example `.mdfsrc.yaml`:**
 
@@ -173,86 +172,54 @@ contexts_dir: ".mdfs/contexts"
 
 # Directory for LLM response files (default: .mdfs/responses)  
 responses_dir: ".mdfs/responses"
-
-# Directories containing markdown files to extend the system prompt
-# Files are loaded alphabetically and joined with blank lines
-prompt_extensions:
-  - ".mdfs/extensions"
-  - "docs/mdfs-prompts"
 ```
 
 ### Using Configuration
 
 1. **Create config**: Run `mdfs init` to create a default `.mdfsrc.yaml`
 2. **Customize paths**: Edit `contexts_dir` and `responses_dir` as needed
-3. **Add prompt extensions**: Place markdown files in configured `prompt_extensions` directories
-4. **Auto-loading**: MDFS automatically loads and uses the configuration
+3. **Auto-loading**: MDFS automatically loads and uses the configuration
 
 **Notes:**
 - Configuration is optional — MDFS works fine with defaults
 - Paths can be relative (relative to config file) or absolute
-- Extension files are sorted alphabetically within each directory
-- Non-existent extension directories are silently skipped
 
-### Prompt Extensions (System Prompt Rules)
+### Rules (`.mdfs/rules/`)
 
-MDFS extends the system prompt by loading markdown files from extension directories.
-This allows you to add custom rules and instructions for the LLM.
+MDFS includes project rules in every bundle. Rules are plain Markdown
+files in `.mdfs/rules/` — no configuration needed.
 
-**Built-in behavior:**
-- `.mdfs/rules/` directory is **automatically loaded** if it exists
-- This is the default place for system prompt rules
-- Always loaded first, before any other extensions
-- Can be created manually: `mkdir -p .mdfs/rules` and add to `.gitignore`
+**Ordering** is controlled by the filesystem and frontmatter:
 
-**How to customize prompt rules:**
+1. Files are loaded in **filename order** — use numeric prefixes
+   (`10-style.md`, `20-domain.md`) to control the sequence
+2. A minimal frontmatter `priority` overrides filename order
+   (higher priority goes first; ties keep filename order)
+3. `alwaysApply: false` marks a rule as optional — it is included
+   only with `bundle --all`
 
-1. Create markdown files in `.mdfs/rules/`:
-   ```bash
-   mkdir -p .mdfs/rules
-   echo "# Custom LLM Instructions" > .mdfs/rules/custom_rules.md
-   ```
+That's the whole frontmatter — only two fields are defined:
 
-2. Add additional extension directories in `.mdfsrc.yaml`:
-   ```yaml
-   prompt_extensions:
-     - ".mdfs/extensions"    # additional rules
-     - "docs/mdfs-prompts"   # team documentation
-   ```
+```markdown
+---
+priority: 100        # higher = earlier in the bundle (default: 0)
+alwaysApply: true    # false = include only with `bundle --all` (default: true)
+---
+# Answer style
 
-3. Or use CLI flags for temporary additions:
-   ```bash
-   mdfs bundle src/ --prompt-extensions-dir ./temp-prompts
-   ```
-
-**Loading priority (cumulative — all are included):**
-
-1. **Built-in (.mdfs/rules/)** — Always loaded first (if exists)
-2. **Configuration (.mdfsrc.yaml)** — Appended to built-in rules
-3. **Command-line (--prompt-extensions-dir)** — Appended last
-
-**Example:**
-```
-.mdfs/rules/
-├── system.md           → loaded first
-└── custom.md           → loaded second
-
-.mdfsrc.yaml:
-  prompt_extensions:
-    - docs/prompts     → loaded third
-
-mdfs bundle src/ --prompt-extensions-dir ./tmp
-                       → loaded fourth
-
-Result: system.md + custom.md + docs/prompts/* + tmp/*
+- Reply in the language of my message.
+- Give the conclusion first, reasoning after.
 ```
 
 **Notes:**
-- Files are loaded alphabetically within each directory
-- Extensions are joined with blank lines
-- Duplicate directories are included only once
-- Non-existent directories are silently skipped
-- Use this feature to add team guidelines, coding standards, or LLM-specific instructions
+- Files without frontmatter are always included and keep filename order
+  (backward compatible)
+- Rule bodies are joined with blank lines; frontmatter is stripped
+- Non-markdown files, empty files and frontmatter-only files are skipped
+- Rules are inserted inside the `--- START OF RULES ---` block, after the
+  built-in MDFS format rules
+- There is no token budget, truncation or dropping: every included rule
+  file is written to the bundle in full
 
 ---
 
@@ -284,23 +251,29 @@ Creates:
 
 ### `mdfs bundle`
 
-Pack project files into a single Markdown document.
+Pack project rules and/or files into a single Markdown document.
 
 ```bash
 mdfs bundle file1.py file2.py ...      # paths relative to project root
 mdfs bundle src/*.py -l "my label"     # with label
 mdfs bundle src/*.py -o custom.md      # custom output path
 mdfs bundle src/*.py -s prompt.md      # custom system prompt
-mdfs bundle src/*.py --no-preamble     # without table of contents
+mdfs bundle src/*.py -q "Review this"  # append your question
+mdfs bundle src/*.py --clip            # also copy to clipboard
+mdfs bundle --all                      # include optional rules too
+mdfs bundle --no-preamble              # without table of contents
 mdfs bundle src/*.py --no-gitignore    # include .gitignore'd files
 ```
 
 | Argument/Flag | Description |
 |---------------|-------------|
-| `files` (positional) | File paths or directories to include (required, multiple allowed) |
+| `files` (positional, optional) | File paths or directories to include (multiple allowed). **Without files, bundles only the rules** — useful at session start |
 | `-l, --label` | Human-readable label for filename |
-| `-s, --system-prompt` | Custom system prompt file |
+| `-s, --system-prompt` | Custom system prompt file (legacy mode, with `--no-preamble`) |
 | `-o, --output` | Custom output path (default: `.mdfs/contexts/<timestamp>.md`) |
+| `-q, --query` | User question to append to the bundle |
+| `--clip` | Also copy the bundle to clipboard |
+| `--all` | Include all rules, including those with `alwaysApply: false` |
 | `--no-preamble` | Disable preamble and table of contents |
 | `--no-gitignore` | Include files that are in `.gitignore` |
 
@@ -308,6 +281,20 @@ mdfs bundle src/*.py --no-gitignore    # include .gitignore'd files
 - `files` are positional arguments (come before flags)
 - Multiple files/directories are supported
 - Paths are relative to project root
+
+**Session-start workflow** (rules-only bundle, no attachments needed):
+
+```bash
+# Start of a chat session: copy rules + your question to the clipboard,
+# then paste into the chat input
+mdfs bundle --clip -q "Help me design the auth module"
+#   📦 Context saved: .mdfs/contexts/2026-04-04_143000.md
+#   📋 Copied to clipboard
+
+# Follow-up messages need no re-paste if the chat keeps context:
+# the rules block explicitly says they apply to the entire conversation
+mdfs bundle src/auth.py -q "Now review this file"
+```
 
 ### `mdfs paste`
 
@@ -455,7 +442,12 @@ The system prompt teaches the LLM to output files in MDFS format.
 The bundler automatically prepends it to every context file.
 
 Use `mdfs rules` to view the system prompt and copy it to clipboard.
-You can also customize rules by placing files in `.mdfs/rules/`.
+You can also add project rules by placing files in `.mdfs/rules/`
+(see [Rules](#rules-mdfsrules)).
+
+In a rules-only bundle (`mdfs bundle` without files), the document ends
+with a note that the rules apply to the entire conversation, so a single
+paste at session start covers all subsequent messages.
 
 ## Project layout with MDFS
 

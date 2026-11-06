@@ -176,9 +176,14 @@ class TestBundle(unittest.TestCase):
         self.assertIn("````", result)
 
     def test_empty_file_list(self):
+        """Empty file list produces a rules-only document (no file sections)."""
         result = bundle(self.tmpdir, [])
-        # Should return just the separator if prompt given
         self.assertIsInstance(result, str)
+        self.assertIn("--- START OF RULES ---", result)
+        self.assertIn("--- END OF RULES ---", result)
+        self.assertNotIn("print('hello')", result)
+        self.assertNotIn("## Содержание", result)
+        self.assertNotIn("Now process the following document", result)
 
     def test_heading_level_1(self):
         result = bundle(self.tmpdir, ["src/main.py"], heading_level=1)
@@ -287,6 +292,79 @@ class TestBundle(unittest.TestCase):
         result = bundle(self.tmpdir, ["src/main.py"])
         self.assertIn("MANDATORY FORMAT RULES", result)
         self.assertIn("QUICK REMINDER", result)
+
+    # ----- rules from .mdfs/rules/ -----
+
+    def test_rules_included_in_full_bundle(self):
+        """Rules text is inserted inside the START/END OF RULES block."""
+        result = bundle(self.tmpdir, ["src/main.py"], rules="My custom rule")
+        rules_start = result.find("--- START OF RULES ---")
+        rules_end = result.find("--- END OF RULES ---")
+        self.assertTrue(0 < rules_start < rules_end)
+        block = result[rules_start:rules_end]
+        self.assertIn("My custom rule", block)
+        self.assertIn("MANDATORY FORMAT RULES", result)
+
+    def test_rules_empty_not_added(self):
+        """Empty/whitespace rules text does not add a blank section."""
+        with_rules = bundle(self.tmpdir, ["src/main.py"], rules="   ")
+        without_rules = bundle(self.tmpdir, ["src/main.py"], rules=None)
+        self.assertEqual(with_rules, without_rules)
+
+    # ----- rules-only mode (no files) -----
+
+    def test_rules_only_mode(self):
+        """No files: rules-only document without TOC and file sections."""
+        result = bundle(self.tmpdir, [], rules="Rule A\n\nRule B")
+        self.assertIn("--- START OF RULES ---", result)
+        self.assertIn("--- END OF RULES ---", result)
+        self.assertIn("Rule A\n\nRule B", result)
+        self.assertIn("apply to the entire conversation", result)
+        self.assertNotIn("## Содержание", result)
+        self.assertNotIn("print('hello')", result)
+        self.assertNotIn("QUICK REMINDER", result)
+        self.assertNotIn("Now process the following document", result)
+
+    def test_rules_only_mode_without_rules(self):
+        """Rules-only mode works even when no rules are configured."""
+        result = bundle(self.tmpdir, [])
+        self.assertIn("--- START OF RULES ---", result)
+        self.assertIn("--- END OF RULES ---", result)
+
+    def test_rules_only_mode_legacy_system_prompt(self):
+        """No files + --no-preamble + custom prompt: legacy branch."""
+        result = bundle(
+            self.tmpdir, [],
+            system_prompt="Custom prompt", include_preamble=False,
+        )
+        self.assertIn("Custom prompt", result)
+        self.assertNotIn("--- START OF RULES ---", result)
+
+    # ----- question section -----
+
+    def test_question_in_rules_only_mode(self):
+        """--query in rules-only mode appends the Question section."""
+        result = bundle(self.tmpdir, [], query="What is this project?")
+        self.assertIn("<!-- question -->", result)
+        self.assertIn("## Question", result)
+        self.assertIn("What is this project?", result)
+        # Question goes after the rules block
+        self.assertGreater(
+            result.find("## Question"), result.find("--- END OF RULES ---"))
+
+    def test_question_in_full_bundle(self):
+        """--query with files appends the Question after the file sections."""
+        result = bundle(self.tmpdir, ["src/main.py"], query="Review this code")
+        self.assertIn("## Question", result)
+        self.assertIn("Review this code", result)
+        self.assertGreater(
+            result.find("## Question"), result.find('<!-- file: "src/main.py" -->'))
+
+    def test_question_marker_not_parsed_as_file(self):
+        """A question-only document must yield no extractable blocks."""
+        from mdfs.core.parser import parse
+        doc = "---\n\n<!-- question -->\n## Question\n\nWhy?\n"
+        self.assertEqual(parse(doc), [])
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)

@@ -102,6 +102,137 @@ class TestBundleCommand(unittest.TestCase):
         content = contexts[0].read_text(encoding="utf-8")
         self.assertIn("You are a helpful assistant.", content)
 
+    def test_bundle_rules_only(self):
+        """Bundle without files produces a rules-only context document."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "style.md").write_text("Always answer briefly.\n", encoding="utf-8")
+        (rules / "extra.md").write_text(
+            "---\nalwaysApply: false\n---\nOptional rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="rules",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            all=False,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        self.assertEqual(len(contexts), 1)
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("--- START OF RULES ---", content)
+        self.assertIn("Always answer briefly.", content)
+        # alwaysApply: false rules are excluded without --all
+        self.assertNotIn("Optional rule", content)
+        # No file sections in rules-only mode
+        self.assertNotIn("def main():", content)
+
+    def test_bundle_rules_only_with_all_flag(self):
+        """--all includes rules marked alwaysApply: false."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "style.md").write_text("Always answer briefly.\n", encoding="utf-8")
+        (rules / "extra.md").write_text(
+            "---\nalwaysApply: false\n---\nOptional rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="rules",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            all=True,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("Optional rule", content)
+
+    def test_bundle_with_query(self):
+        """--query appends the Question section to the bundle."""
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=["src/main.py"],
+            label="review",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            all=False,
+            query="Review this code please",
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("<!-- question -->", content)
+        self.assertIn("## Question", content)
+        self.assertIn("Review this code please", content)
+
+    def test_bundle_clip_copies_to_clipboard(self):
+        """--clip copies the bundle to the system clipboard."""
+        with patch("mdfs.commands.bundle.copy_to_clipboard") as mock_copy:
+            args = argparse.Namespace(
+                dir=str(self.project_root),
+                files=[],
+                label="clip",
+                system_prompt=None,
+                output=None,
+                no_preamble=False,
+                no_gitignore=False,
+                all=False,
+                query=None,
+                clip=True,
+            )
+            cmd = BundleCommand(args)
+            cmd.execute()
+
+            mock_copy.assert_called_once()
+            copied = mock_copy.call_args[0][0]
+            self.assertIn("--- START OF RULES ---", copied)
+
+    def test_bundle_priority_ordering_from_frontmatter(self):
+        """Rules are ordered by frontmatter priority, then file name."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "a_low.md").write_text(
+            "---\npriority: 1\n---\nLow priority rule\n", encoding="utf-8")
+        (rules / "z_high.md").write_text(
+            "---\npriority: 10\n---\nHigh priority rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="order",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            all=False,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertLess(content.find("High priority rule"),
+                        content.find("Low priority rule"))
+
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 

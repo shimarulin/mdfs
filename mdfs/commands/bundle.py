@@ -1,4 +1,4 @@
-"""Bundle project files into a Markdown context document."""
+"""Bundle project rules and/or files into a Markdown context document."""
 
 from __future__ import annotations
 
@@ -8,19 +8,22 @@ from pathlib import Path
 
 from ..config import Config
 from ..core.bundler import bundle
-from ..utils import make_filename
+from ..core.rules import render_rules
+from ..utils import copy_to_clipboard, make_filename
 from .base import BaseCommand
 
 
 class BundleCommand(BaseCommand):
-    """Command for bundling project files into a single Markdown document."""
+    """Command for bundling rules and project files into a Markdown document."""
 
     def execute(self) -> int:
         """Execute the bundle command.
-        
-        Packs specified files into a single Markdown document with
-        optional system prompt prepended.
-        
+
+        Packs .mdfs/rules/ and the specified files into a single Markdown
+        document. Without file arguments, produces a rules-only document
+        (useful at session start). Optionally appends the user question
+        and copies the result to the clipboard.
+
         Returns:
             Exit code (0 for success)
         """
@@ -45,6 +48,11 @@ class BundleCommand(BaseCommand):
         # Determine whether to include preamble
         include_preamble = not self.args.no_preamble
 
+        # Load rules from .mdfs/rules/ (--all includes alwaysApply: false)
+        include_all = getattr(self.args, "all", False)
+        rules = render_rules(self.root, include_all=include_all)
+        query = getattr(self.args, "query", None)
+
         result = bundle(
             base_dir=self.root,
             file_paths=self.args.files,
@@ -52,7 +60,8 @@ class BundleCommand(BaseCommand):
             include_preamble=include_preamble,
             respect_gitignore=not self.args.no_gitignore if hasattr(self.args, "no_gitignore") else True,
             interactive=True,
-            prompt_extensions=config.load_prompt_extensions(self.root),
+            rules=rules,
+            query=query,
         )
 
         if self.args.output:
@@ -71,4 +80,10 @@ class BundleCommand(BaseCommand):
             f"  📦 Context saved: {display_path}",
             file=sys.stderr,
         )
+
+        # Optionally copy the bundle to the system clipboard
+        if getattr(self.args, "clip", False):
+            copy_to_clipboard(result)
+            print("  📋 Copied to clipboard", file=sys.stderr)
+
         return 0
