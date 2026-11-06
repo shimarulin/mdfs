@@ -7,7 +7,6 @@ Commands:
     paste    — create a response file from clipboard content
     extract  — write file blocks to disk, apply patch blocks
     log      — show chronological history
-    rules    — deprecated alias for 'mdfs bundle' (rules-only)
     setup    — install/uninstall shell completions
 """
 
@@ -24,7 +23,6 @@ from .commands import (
     InitCommand,
     LogCommand,
     PasteCommand,
-    RulesCommand,
     SetupCommand,
 )
 from .utils import timestamp
@@ -149,12 +147,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("log", help="Show chronological log", parents=[overrides])
 
-    sub.add_parser(
-        "rules",
-        help="Deprecated alias for 'mdfs bundle' (rules-only; removed in 0.8.0)",
-        parents=[overrides],
-    )
-
     p_setup = sub.add_parser("setup", help="Install/uninstall shell completions",
                              parents=[overrides])
     p_setup.add_argument(
@@ -186,7 +178,6 @@ def main() -> None:
         "paste": PasteCommand,
         "extract": ExtractCommand,
         "log": LogCommand,
-        "rules": RulesCommand,
         "setup": SetupCommand,
     }
 

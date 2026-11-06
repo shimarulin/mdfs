@@ -54,7 +54,6 @@ mdfs/
 │   ├── paste.py            # Save and extract from clipboard
 │   ├── extract.py          # Extract files from Markdown
 │   ├── log.py              # Show history of contexts/responses
-│   ├── rules.py            # Display system prompt
 │   └── setup.py            # Shell setup and completions
 └── core/                   # Core functionality modules
     ├── __init__.py
@@ -216,29 +215,6 @@ class CommandNameCommand:
 - `-d` (optional): Project directory (default: current)
 
 **Output**: Timestamped list of bundles and responses
-
----
-
-#### `mdfs rules` — Deprecated Rules Alias
-
-**Class**: `RulesCommand` (`mdfs/commands/rules.py`)
-
-**Purpose**: Deprecated alias for `mdfs bundle` without file arguments
-(will be removed in 0.8.0)
-
-**Parameters**: None
-
-**Output**:
-- Deprecation notice to stderr (`'mdfs rules' is deprecated…`)
-- Prints the rules-only bundle document to stdout (preamble + rules
-  block + persistence footer — same as `mdfs bundle` with no files)
-- Copies the document to the system clipboard
-- Prints confirmation message to stderr
-
-**Notes**:
-- Single rules pipeline: uses `resolve_rules()` + `bundle()`, honors
-  `rules_always` globs and the packaged fallback rule
-- Kept for backward compatibility with mdfs ≤ 0.6.x
 
 ---
 
@@ -478,7 +454,6 @@ tests/
 ├── test_parser.py              # marker parsing
 ├── test_cli_integration.py      # end-to-end CLI tests
 ├── test_setup_command.py        # shell setup command
-├── test_rules_command.py        # rules command [NEW]
 └── test_naming.py              # timestamp and naming
 ```
 
@@ -662,8 +637,9 @@ Before committing changes:
 **Content**: System prompt that teaches LLMs to output files in MDFS format
 
 **Used by**:
-- `BundleCommand` — prepended to every context
-- `RulesCommand` — displayed to user and copied to clipboard
+- `mdfs/core/rules.py` — `built_in_rule()`: packaged fallback copy of
+  the `00-file-output-format.md` rule (used when the project has no
+  such rule) and shipped to projects by `mdfs init`
 
 **Format**: Markdown with sections on markers, fence depth, patching, etc.
 

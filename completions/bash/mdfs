@@ -4,7 +4,7 @@ _mdfs() {
     local cur prev words cword
     _init_completion || return
 
-    local commands="init bundle paste extract log rules"
+    local commands="init bundle paste extract log"
 
     local cmd=""
     local i
@@ -26,7 +26,6 @@ _mdfs() {
 
     case "$cmd" in
         init) ;;
-        rules) ;;
         bundle)
             case "$prev" in
                 -s|--system-prompt|-o|--output|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;

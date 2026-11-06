@@ -346,26 +346,6 @@ mdfs extract response.md -f         # force overwrite all files
 - Supports both full files and unified diff patches
 - Uses fuzzy matching for patches (line numbers are hints, context lines matter)
 
-### `mdfs rules` (deprecated)
-
-Deprecated alias for `mdfs bundle` without file arguments — kept for
-backward compatibility with mdfs ≤ 0.6.x, **will be removed in 0.8.0**.
-
-```bash
-mdfs rules              # same document as 'mdfs bundle' (rules-only)
-# preferred equivalent:
-mdfs bundle --clip      # rules-only document + clipboard
-```
-
-Prints the rules-only bundle document (preamble, rules block with the
-`mdfs:rules` markers, persistence footer) to stdout and copies it to
-the clipboard, with a deprecation notice on stderr.
-
-**Usage notes:**
-- Output goes to stdout (can be piped or redirected)
-- Content is also copied to system clipboard
-- There is a single rules pipeline behind the CLI — `mdfs bundle`
-
 ### `mdfs log`
 
 Show chronological history of contexts and responses in `.mdfs/`.
@@ -456,7 +436,7 @@ to tune them. You can also add project rules by placing files in
 `.mdfs/rules/` (see [Rules](#rules-mdfsrules)).
 
 To preview the ready-to-paste session-start document, run `mdfs bundle`
-without file arguments (or the deprecated `mdfs rules` alias).
+without file arguments (add `--clip` to also copy it to the clipboard).
 
 In a rules-only bundle (`mdfs bundle` without files), the document ends
 with a note that the rules apply to the entire conversation, so a single

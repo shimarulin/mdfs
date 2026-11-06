@@ -764,7 +764,6 @@ class TestCliOverridePlacement(unittest.TestCase):
             ["paste", "-x"],
             ["extract", "in.md"],
             ["log"],
-            ["rules"],
             ["setup"],
         ):
             args = parser.parse_args([*argv, "--responses-dir", "r"])

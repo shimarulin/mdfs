@@ -8,7 +8,6 @@ _mdfs() {
         'paste:Save clipboard as response, optionally extract files'
         'extract:Extract files and apply patches from Markdown'
         'log:Show chronological log of contexts and responses'
-        'rules:Deprecated alias for mdfs bundle (rules-only; removed in 0.8.0)'
     )
 
     _arguments -C \
@@ -27,7 +26,6 @@ _mdfs() {
         args)
             case "$words[1]" in
                 init) ;;
-                rules) ;;
                 bundle)
                     _arguments \
                         '*:file:_files' \
