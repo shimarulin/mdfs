@@ -1,4 +1,10 @@
-"""Default system prompt for LLM, embedded in the package."""
+"""Built-in file output format rule, embedded in the package.
+
+This is the packaged copy of `00-file-output-format.md`: `mdfs init`
+writes it into a project's rules directory, and the bundler uses it as
+a fallback when the file is absent from the rules directory
+(see mdfs/core/rules.py).
+"""
 
 DEFAULT_SYSTEM_PROMPT = r"""# Rule: File Output Format
 
@@ -224,7 +230,7 @@ If anything is unclear, respond with `"I need clarification on: <specific rule>"
 - Heading level: default `###`.
 - Paths in markers **must be in double quotes**.
 
-**The full rule set is embedded below as part of this document (the `DEFAULT_SYSTEM_PROMPT`). Read it once, then ignore it in your output.**
+**The full rule set is embedded below in the rules block delimited by `mdfs:rules` start/end HTML-comment markers. Read it once, then ignore it in your output.**
 """
 
 QUICK_REMINDER_TEXT = r"""---

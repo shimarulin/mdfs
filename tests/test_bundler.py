@@ -12,7 +12,7 @@ from mdfs.core.bundler import (
     _detect_max_fence,
     _lang_for_ext,
 )
-from mdfs.core.rules import render_rules
+from mdfs.core.rules import resolve_rules
 
 
 class TestDetectMaxFence(unittest.TestCase):
@@ -184,7 +184,7 @@ class TestBundle(unittest.TestCase):
 
     def test_empty_file_list(self):
         """Empty file list produces a rules-only document (no file sections)."""
-        result = bundle(self.tmpdir, [])
+        result = bundle(self.tmpdir, [], rules="My rule")
         self.assertIsInstance(result, str)
         self.assertIn(RULES_START_MARKER, result)
         self.assertIn(RULES_END_MARKER, result)
@@ -262,7 +262,8 @@ class TestBundle(unittest.TestCase):
 
     def test_include_preamble_true(self):
         """Test bundle with preamble enabled (default)."""
-        result = bundle(self.tmpdir, ["src/main.py"], include_preamble=True)
+        result = bundle(self.tmpdir, ["src/main.py"], include_preamble=True,
+                        rules="My rule")
         self.assertIn("MANDATORY FORMAT RULES", result)
         self.assertIn(RULES_START_MARKER, result)
         self.assertIn(RULES_END_MARKER, result)
@@ -313,24 +314,28 @@ class TestBundle(unittest.TestCase):
         self.assertIn("MANDATORY FORMAT RULES", result)
 
     def test_rules_block_markers_and_rule_framing(self):
-        """Rules block uses mdfs:rules markers; prompt and rules are framed."""
+        """Rules block uses mdfs:rules markers; every rule is framed."""
         rules_dir = Path(self.tmpdir) / ".mdfs" / "rules"
         rules_dir.mkdir(parents=True)
         (rules_dir / "rule.md").write_text("My custom rule", encoding="utf-8")
         result = bundle(
             self.tmpdir, ["src/main.py"],
-            rules=render_rules(self.tmpdir),
+            rules=resolve_rules(rules_dir, ["*"]),
         )
         self.assertIn(RULES_START_MARKER, result)
         self.assertIn(RULES_END_MARKER, result)
-        # Built-in prompt is framed as a named rule
-        self.assertIn(
-            '<!-- mdfs:rule:start name="default-system-prompt" -->', result)
-        self.assertIn(
-            '<!-- mdfs:rule:end name="default-system-prompt" -->', result)
         # Project rules are framed with their file name
         self.assertIn('<!-- mdfs:rule:start name="rule.md" -->', result)
         self.assertIn('<!-- mdfs:rule:end name="rule.md" -->', result)
+
+    def test_no_rules_no_builtin_prompt(self):
+        """Without rules the built-in prompt is not embedded in the bundle."""
+        result = bundle(self.tmpdir, ["src/main.py"], rules=None)
+        self.assertNotIn(RULES_START_MARKER, result)
+        self.assertNotIn("# Rule: File Output Format", result)
+        # Preamble and document flow are intact
+        self.assertIn("MANDATORY FORMAT RULES", result)
+        self.assertIn("<!-- file: \"src/main.py\" -->", result)
 
     def test_rules_empty_not_added(self):
         """Empty/whitespace rules text does not add a blank section."""
@@ -353,10 +358,11 @@ class TestBundle(unittest.TestCase):
         self.assertNotIn("Now process the following document", result)
 
     def test_rules_only_mode_without_rules(self):
-        """Rules-only mode works even when no rules are configured."""
+        """Rules-only mode without any rules: preamble only, no rules block."""
         result = bundle(self.tmpdir, [])
-        self.assertIn(RULES_START_MARKER, result)
-        self.assertIn(RULES_END_MARKER, result)
+        self.assertNotIn(RULES_START_MARKER, result)
+        self.assertNotIn(RULES_END_MARKER, result)
+        self.assertIn("MANDATORY FORMAT RULES", result)
 
     def test_rules_only_mode_legacy_system_prompt(self):
         """No files + --no-preamble + custom prompt: legacy branch."""
@@ -371,7 +377,8 @@ class TestBundle(unittest.TestCase):
 
     def test_question_in_rules_only_mode(self):
         """--query in rules-only mode appends the Question section."""
-        result = bundle(self.tmpdir, [], query="What is this project?")
+        result = bundle(self.tmpdir, [], rules="Rule A",
+                        query="What is this project?")
         self.assertIn("<!-- question -->", result)
         self.assertIn("## Question", result)
         self.assertIn("What is this project?", result)

@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from .core.rules import DEFAULT_RULE_GLOB
+
 try:
     import yaml
 except ImportError:
@@ -19,11 +21,11 @@ class ConfigError(Exception):
 
 class Config:
     """Manages MDFS configuration from .mdfsrc.yaml files.
-    
+
     Searches for .mdfsrc.yaml starting from current directory and moving up
     to the filesystem root. Configuration can override default paths for
-    contexts and responses. System prompt rules always come from the
-    built-in .mdfs/rules/ directory (see mdfs/core/rules.py).
+    contexts, responses and rules, and select which rules are always
+    included in bundles (see mdfs/core/rules.py).
     """
 
     def __init__(self, config_path: Path | None = None):
@@ -134,6 +136,41 @@ class Config:
             path = base_dir / path
         return path.resolve()
 
+    def get_rules_dir(self, base_dir: Path | None = None) -> Path:
+        """Get the rules directory path.
+
+        Args:
+            base_dir: Base directory for relative paths (defaults to config directory)
+
+        Returns:
+            Path to rules directory (default: ``.mdfs/rules``)
+        """
+        if base_dir is None:
+            base_dir = self.config_path.parent if self.config_path else Path.cwd()
+
+        dir_path = self.config_data.get("rules_dir", ".mdfs/rules")
+        path = Path(dir_path)
+        if not path.is_absolute():
+            path = base_dir / path
+        return path.resolve()
+
+    def get_rules_always(self) -> list[str]:
+        """Get the glob patterns of rules included in every bundle.
+
+        Returns:
+            List of filename glob patterns. Default: ``["00-*"]`` — only
+            the file output format rule (see mdfs/core/rules.py)
+        """
+        value = self.config_data.get("rules_always", [DEFAULT_RULE_GLOB])
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(v) for v in value]
+        raise ConfigError(
+            "'rules_always' must be a glob string or a list of glob strings, "
+            f"got {type(value).__name__}"
+        )
+
     def is_configured(self) -> bool:
         """Check if a configuration file was found.
         
@@ -146,6 +183,8 @@ class Config:
         self,
         contexts_dir: str | None = None,
         responses_dir: str | None = None,
+        rules_dir: str | None = None,
+        rules_always: list[str] | None = None,
     ) -> None:
         """Override configuration with command-line arguments.
         
@@ -154,11 +193,17 @@ class Config:
         Args:
             contexts_dir: Override contexts directory path
             responses_dir: Override responses directory path
+            rules_dir: Override rules directory path
+            rules_always: Override rules-always glob patterns
         """
         if contexts_dir is not None:
             self.config_data["contexts_dir"] = contexts_dir
         if responses_dir is not None:
             self.config_data["responses_dir"] = responses_dir
+        if rules_dir is not None:
+            self.config_data["rules_dir"] = rules_dir
+        if rules_always is not None:
+            self.config_data["rules_always"] = rules_always
 
     @staticmethod
     def create_default_config(path: Path) -> None:
@@ -175,6 +220,14 @@ contexts_dir: ".mdfs/contexts"
 
 # Directory for LLM response files
 responses_dir: ".mdfs/responses"
+
+# Directory with rule files (*.md)
+rules_dir: ".mdfs/rules"
+
+# Rules included in every bundle (filename globs, e.g. "00-*", "1*").
+# Default: only the file output format rule. Use ["*"] for all rules.
+rules_always:
+  - "00-*"
 """
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")

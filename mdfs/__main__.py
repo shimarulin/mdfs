@@ -96,8 +96,10 @@ def main() -> None:
     p_bundle.add_argument("-q", "--query", help="User question to append to the bundle")
     p_bundle.add_argument("--clip", action="store_true",
                           help="Also copy the bundle to clipboard")
-    p_bundle.add_argument("--all", action="store_true",
-                          help="Include all rules, including those with 'alwaysApply: false'")
+    p_bundle.add_argument("--rules", action="append", metavar="GLOB",
+                          help="Additional rules to include, by filename globs "
+                               "(comma-separated or repeated, e.g. --rules '00-*,1*'; "
+                               "'*' = all). Default: config 'rules_always'")
     p_bundle.add_argument("--no-preamble", action="store_true",
                           help="Disable preamble and table of contents")
     p_bundle.add_argument("--no-gitignore", action="store_true",

@@ -32,7 +32,7 @@ _mdfs() {
                 -s|--system-prompt|-o|--output|--contexts-dir|--responses-dir) _filedir; return ;;
                 -l|--label|-q|--query) return ;;
             esac
-            COMPREPLY=($(compgen -W "-l --label -s --system-prompt -o --output -q --query --clip --all --no-preamble --no-gitignore --contexts-dir --responses-dir" -- "$cur"))
+            COMPREPLY=($(compgen -W "-l --label -s --system-prompt -o --output -q --query --clip --rules --no-preamble --no-gitignore --contexts-dir --responses-dir" -- "$cur"))
             ;;
         paste)
             case "$prev" in

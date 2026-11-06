@@ -59,7 +59,7 @@ mdfs/
 └── core/                   # Core functionality modules
     ├── __init__.py
     ├── bundler.py          # File bundling logic
-    ├── rules.py            # Rules loading (.mdfs/rules/ + frontmatter)
+    ├── rules.py            # Rules loading (.mdfs/rules/, filename globs)
     ├── extractor.py        # File extraction and patching logic
     ├── parser.py           # Markdown marker parsing
     └── gitignore.py        # .gitignore handling
@@ -130,8 +130,9 @@ class CommandNameCommand:
 ```
 
 **Notes**:
-- Only creates `.mdfsrc.yaml` configuration file
-- No directories are created by `init` — they are created automatically by `bundle`, `paste`, and other commands as needed
+- Creates `.mdfsrc.yaml` configuration file
+- Writes the file output format rule (`00-file-output-format.md`) into the rules directory (skipped if it already exists)
+- Other directories are created automatically by `bundle`, `paste`, and other commands as needed
 - Users can customize directory paths in `.mdfsrc.yaml` before using other commands
 - Safe to run multiple times (idempotent)
 
@@ -150,15 +151,15 @@ class CommandNameCommand:
 - `-o, --output` (optional): Custom output path
 - `-q, --query` (optional): User question appended to the bundle
 - `--clip` (flag): Also copy the bundle to clipboard
-- `--all` (flag): Include rules with `alwaysApply: false`
+- `--rules GLOB` (repeatable/comma-separated): Extra rules to include, by filename globs (`*` = all; on top of config `rules_always`)
 - `--no-preamble` (flag): Disable preamble and table of contents
 - `--no-gitignore` (flag): Include .gitignore'd files
 
 **Output**: `.mdfs/contexts/<timestamp>__<label>.md`
 
 **Process**:
-1. Loads rules from `.mdfs/rules/` (filename order — numeric prefixes pin the sequence; `alwaysApply: false` only with `--all`)
-2. With files: prepends DEFAULT_SYSTEM_PROMPT + rules inside the `<!-- mdfs:rules:start -->` / `<!-- mdfs:rules:end -->` block (each rule framed by `mdfs:rule` start/end markers), adds table of contents, marks each file with `<!-- file: path -->` markers
+1. Loads rules from `.mdfs/rules/` (filename order — numeric prefixes pin the sequence) selected by globs: config `rules_always` (default `00-*`) + `--rules` globs; guarantees the file output format rule (packaged fallback when absent)
+2. With files: prepends PREAMBLE_TEXT + rules inside the `<!-- mdfs:rules:start -->` / `<!-- mdfs:rules:end -->` block (each rule framed by `mdfs:rule` start/end markers), adds table of contents, marks each file with `<!-- file: path -->` markers
 3. Without files: produces a rules-only document (rules block + persistence footer, no TOC, no file sections)
 4. With `-q/--query`: appends a `<!-- question -->` / `## Question` section at the end (not a parseable marker)
 5. With `--clip`: copies the document to the system clipboard
@@ -281,37 +282,50 @@ contexts_dir: ".mdfs/contexts"
 
 # Directory for LLM response files (default: .mdfs/responses)
 responses_dir: ".mdfs/responses"
+
+# Directory with rule files (default: .mdfs/rules)
+rules_dir: ".mdfs/rules"
+
+# Rules included in every bundle (filename globs)
+rules_always:
+  - "00-*"
 ```
 
 ### Rules Directory (`.mdfs/rules/`)
 
 **Location**: `mdfs/core/rules.py`
 
-Rules are plain Markdown files loaded from `.mdfs/rules/` into every bundle.
-Only one frontmatter field is defined (minimal frontmatter):
+Rules are plain Markdown files loaded from `.mdfs/rules/` into every
+bundle. There is **no frontmatter**: the entire file is the rule body.
 
-| Field | Type | Default | Meaning |
-|---|---|---|---|
-| `alwaysApply` | bool | `true` | `false` = included only with `bundle --all` |
+**Selection**: filename globs, combined from two sources (union):
+- config `rules_always` (default `00-*` — only the file output format rule)
+- CLI `bundle --rules` (repeatable/comma-separated, `*` = all)
 
 **Ordering**: purely by file name — use numeric prefixes (`00-system.md`,
 `10-style.md`) to pin the sequence. No token budget, truncation or
 dropping — every included file is written to the bundle in full.
 
-**Key functions**:
-- `parse_frontmatter(text)` — minimal `key: value` frontmatter parser
-- `load_rules(root, include_all=False) -> list[Rule]` — load rules in filename order
-- `render_rule(rule) -> str` — one rule framed by `mdfs:rule` start/end markers
-- `render_rules(root, include_all=False) -> str` — rule blocks joined with blank lines
+The file output format rule (`00-file-output-format.md`) ships with the
+package: `mdfs init` writes it into the project; when absent from the
+rules directory the built-in packaged copy is used (prepended first).
 
-**Used by**: `BundleCommand` (passes `render_rules()` output to `bundle()`)
+**Key functions**:
+- `built_in_rule() -> Rule` — packaged copy of `00-file-output-format.md`
+- `load_rules(rules_path, patterns) -> list[Rule]` — load rules selected by filename globs
+- `render_rule(rule) -> str` — one rule framed by `mdfs:rule` start/end markers
+- `render_rules(rules) -> str` — rule blocks joined with blank lines
+- `resolve_rules(rules_path, patterns) -> str` — load + guarantee the built-in format rule
+- `parse_rule_globs(raw_values) -> list[str]` — CLI `--rules` parser (bundle.py)
+
+**Used by**: `BundleCommand` (passes `resolve_rules()` output to `bundle()`), `InitCommand` (writes the rule file)
 
 ### Usage
 
 1. Create `.mdfsrc.yaml` in project root (or run `mdfs init`)
-2. Customize paths as needed
-3. Place rule files in `.mdfs/rules/` (frontmatter optional)
-4. Rules are automatically included in every `mdfs bundle` invocation
+2. Customize paths and `rules_always` globs as needed
+3. Place rule files in `.mdfs/rules/` (plain Markdown, no frontmatter)
+4. Rules are automatically included in every `mdfs bundle` invocation per the globs
 
 ### Configuration Class
 
@@ -321,9 +335,11 @@ dropping — every included file is written to the bundle in full.
 - `Config()` — Load config from `.mdfsrc.yaml`
 - `get_contexts_dir(base_dir)` — Get contexts directory path
 - `get_responses_dir(base_dir)` — Get responses directory path
+- `get_rules_dir(base_dir)` — Get rules directory path (default `.mdfs/rules`)
+- `get_rules_always()` — Get `rules_always` glob patterns (default `00-*`)
 - `is_configured()` — Check if config file exists
 - `create_default_config(path)` — Create default `.mdfsrc.yaml`
-- `override(contexts_dir, responses_dir)` — Override config with command-line arguments (takes precedence over `.mdfsrc.yaml`)
+- `override(contexts_dir, responses_dir, rules_dir, rules_always)` — Override config with command-line arguments (takes precedence over `.mdfsrc.yaml`)
 
 ### Command-line Config Overrides
 
@@ -424,10 +440,10 @@ Responsible for:
 ### `mdfs/core/rules.py` — Rules Loading
 
 Responsible for:
-- Loading `.mdfs/rules/*.md` files
-- Parsing minimal frontmatter (`alwaysApply`)
+- Loading `.mdfs/rules/*.md` files (plain Markdown, no frontmatter)
+- Selection: filename globs (config `rules_always` + CLI `--rules`)
 - Ordering: filename order (numeric prefixes), no priority field
-- Filtering `alwaysApply: false` rules unless `include_all=True`
+- Guaranteeing the packaged `00-file-output-format.md` fallback
 
 ---
 
@@ -627,7 +643,7 @@ Before committing changes:
 ```
 .mdfs/
 ├── .gitignore              # Prevents contexts/ and responses/ from being tracked
-├── rules/                  # System prompt rules (.md files, optional frontmatter)
+├── rules/                  # System prompt rules (plain .md files, no frontmatter)
 ├── contexts/               # Generated context files (gitignored)
 │   └── <timestamp>__<label>.md
 └── responses/              # Generated response files (gitignored)

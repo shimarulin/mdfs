@@ -18,14 +18,30 @@ class TestInit(unittest.TestCase):
             config_file = Path(tmpdir) / ".mdfsrc.yaml"
             self.assertTrue(config_file.is_file())
 
-    def test_no_directories_created(self):
-        """Test that init does NOT create .mdfs or any subdirectories."""
+    def test_creates_default_rule_only(self):
+        """Init creates the default rule file, but not contexts/responses."""
         with tempfile.TemporaryDirectory() as tmpdir:
             cmd = InitCommand(argparse.Namespace(dir=tmpdir))
             cmd.execute()
-            mdfs = Path(tmpdir) / ".mdfs"
-            # .mdfs directory should NOT exist
-            self.assertFalse(mdfs.is_dir())
+            rule_file = (Path(tmpdir) / ".mdfs" / "rules"
+                         / "00-file-output-format.md")
+            self.assertTrue(rule_file.is_file())
+            self.assertIn("File Output Format", rule_file.read_text())
+            # contexts/responses are still created lazily by other commands
+            self.assertFalse((Path(tmpdir) / ".mdfs" / "contexts").is_dir())
+            self.assertFalse((Path(tmpdir) / ".mdfs" / "responses").is_dir())
+
+    def test_respects_configured_rules_dir(self):
+        """Init writes the default rule into the configured rules_dir."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = Path(tmpdir) / ".mdfsrc.yaml"
+            config_file.write_text(
+                'rules_dir: "custom-rules"\n', encoding="utf-8")
+            cmd = InitCommand(argparse.Namespace(dir=tmpdir))
+            cmd.execute()
+            rule_file = Path(tmpdir) / "custom-rules" / "00-file-output-format.md"
+            self.assertTrue(rule_file.is_file())
+            self.assertFalse((Path(tmpdir) / ".mdfs" / "rules").is_dir())
 
     def test_idempotent(self):
         """Test that init can be run multiple times safely."""
@@ -38,6 +54,10 @@ class TestInit(unittest.TestCase):
             # Config file should exist
             config_file = Path(tmpdir) / ".mdfsrc.yaml"
             self.assertTrue(config_file.is_file())
+            # Rule file must not be overwritten or duplicated
+            rule_file = (Path(tmpdir) / ".mdfs" / "rules"
+                         / "00-file-output-format.md")
+            self.assertTrue(rule_file.is_file())
 
 
 class TestLog(unittest.TestCase):

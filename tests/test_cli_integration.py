@@ -103,11 +103,12 @@ class TestBundleCommand(unittest.TestCase):
         self.assertIn("You are a helpful assistant.", content)
 
     def test_bundle_rules_only(self):
-        """Bundle without files produces a rules-only context document."""
+        """Bundle without files: default glob 00-* + built-in fallback."""
         rules = self.project_root / ".mdfs" / "rules"
-        (rules / "style.md").write_text("Always answer briefly.\n", encoding="utf-8")
-        (rules / "extra.md").write_text(
-            "---\nalwaysApply: false\n---\nOptional rule\n", encoding="utf-8")
+        (rules / "00-style.md").write_text(
+            "Always answer briefly.\n", encoding="utf-8")
+        (rules / "20-extra.md").write_text(
+            "Optional rule\n", encoding="utf-8")
 
         args = argparse.Namespace(
             dir=str(self.project_root),
@@ -117,7 +118,7 @@ class TestBundleCommand(unittest.TestCase):
             output=None,
             no_preamble=False,
             no_gitignore=False,
-            all=False,
+            rules=None,
             query=None,
             clip=False,
         )
@@ -129,17 +130,21 @@ class TestBundleCommand(unittest.TestCase):
         content = contexts[0].read_text(encoding="utf-8")
         self.assertIn("<!-- mdfs:rules:start -->", content)
         self.assertIn("Always answer briefly.", content)
-        # alwaysApply: false rules are excluded without --all
+        # default rules_always = ["00-*"]: non-matching rules excluded
         self.assertNotIn("Optional rule", content)
+        # 00-file-output-format.md absent from the dir -> built-in fallback
+        self.assertIn("File Output Format", content)
+        self.assertIn('name="default-file-output-format"', content)
         # No file sections in rules-only mode
         self.assertNotIn("def main():", content)
 
-    def test_bundle_rules_only_with_all_flag(self):
-        """--all includes rules marked alwaysApply: false."""
+    def test_bundle_rules_only_with_star_glob(self):
+        """--rules '*' includes every rule (replaces the old --all)."""
         rules = self.project_root / ".mdfs" / "rules"
-        (rules / "style.md").write_text("Always answer briefly.\n", encoding="utf-8")
-        (rules / "extra.md").write_text(
-            "---\nalwaysApply: false\n---\nOptional rule\n", encoding="utf-8")
+        (rules / "00-style.md").write_text(
+            "Always answer briefly.\n", encoding="utf-8")
+        (rules / "20-extra.md").write_text(
+            "Optional rule\n", encoding="utf-8")
 
         args = argparse.Namespace(
             dir=str(self.project_root),
@@ -149,7 +154,7 @@ class TestBundleCommand(unittest.TestCase):
             output=None,
             no_preamble=False,
             no_gitignore=False,
-            all=True,
+            rules=["*"],
             query=None,
             clip=False,
         )
@@ -159,6 +164,58 @@ class TestBundleCommand(unittest.TestCase):
         contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
         content = contexts[0].read_text(encoding="utf-8")
         self.assertIn("Optional rule", content)
+
+    def test_bundle_rules_with_multiple_globs(self):
+        """--rules accepts several globs; selection is their union."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "10-style.md").write_text("Style rule\n", encoding="utf-8")
+        (rules / "20-domain.md").write_text("Domain rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="globs",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=["00-*", "1*"],
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("Style rule", content)
+        self.assertNotIn("Domain rule", content)
+
+    def test_bundle_project_format_rule_replaces_builtin(self):
+        """When 00-file-output-format.md exists, no built-in fallback."""
+        rules = self.project_root / ".mdfs" / "rules"
+        (rules / "00-file-output-format.md").write_text(
+            "# Project format rule\n", encoding="utf-8")
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            files=[],
+            label="fmt",
+            system_prompt=None,
+            output=None,
+            no_preamble=False,
+            no_gitignore=False,
+            rules=None,
+            query=None,
+            clip=False,
+        )
+        cmd = BundleCommand(args)
+        cmd.execute()
+
+        contexts = list((self.project_root / ".mdfs" / "contexts").glob("*.md"))
+        content = contexts[0].read_text(encoding="utf-8")
+        self.assertIn("# Project format rule", content)
+        self.assertNotIn("default-file-output-format", content)
 
     def test_bundle_with_query(self):
         """--query appends the Question section to the bundle."""
@@ -170,7 +227,7 @@ class TestBundleCommand(unittest.TestCase):
             output=None,
             no_preamble=False,
             no_gitignore=False,
-            all=False,
+            rules=None,
             query="Review this code please",
             clip=False,
         )
@@ -194,7 +251,7 @@ class TestBundleCommand(unittest.TestCase):
                 output=None,
                 no_preamble=False,
                 no_gitignore=False,
-                all=False,
+                rules=None,
                 query=None,
                 clip=True,
             )
@@ -221,7 +278,7 @@ class TestBundleCommand(unittest.TestCase):
             output=None,
             no_preamble=False,
             no_gitignore=False,
-            all=False,
+            rules=["*"],
             query=None,
             clip=False,
         )

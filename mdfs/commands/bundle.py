@@ -8,9 +8,31 @@ from pathlib import Path
 
 from ..config import Config
 from ..core.bundler import bundle
-from ..core.rules import render_rules
+from ..core.rules import resolve_rules
 from ..utils import copy_to_clipboard, make_filename
 from .base import BaseCommand
+
+
+def parse_rule_globs(raw_values: list[str] | None) -> list[str]:
+    """Parse CLI rule glob values into a flat pattern list.
+
+    Accepts repeated flags and/or comma-separated globs:
+    ``--rules '00-*,1*' --rules '2*'`` -> ``['00-*', '1*', '2*']``.
+
+    Args:
+        raw_values: Raw ``--rules`` values (None if the flag was not used)
+
+    Returns:
+        Flat list of glob patterns
+    """
+    if not raw_values:
+        return []
+    return [
+        part.strip()
+        for value in raw_values
+        for part in str(value).split(",")
+        if part.strip()
+    ]
 
 
 class BundleCommand(BaseCommand):
@@ -19,10 +41,13 @@ class BundleCommand(BaseCommand):
     def execute(self) -> int:
         """Execute the bundle command.
 
-        Packs .mdfs/rules/ and the specified files into a single Markdown
-        document. Without file arguments, produces a rules-only document
-        (useful at session start). Optionally appends the user question
-        and copies the result to the clipboard.
+        Packs the selected rules from the rules directory and the specified
+        files into a single Markdown document. Without file arguments,
+        produces a rules-only document (useful at session start). Optionally
+        appends the user question and copies the result to the clipboard.
+
+        Rules are selected by filename globs: config ``rules_always``
+        (default ``00-*``) plus the ``--rules`` globs (``*`` = all).
 
         Returns:
             Exit code (0 for success)
@@ -48,9 +73,10 @@ class BundleCommand(BaseCommand):
         # Determine whether to include preamble
         include_preamble = not self.args.no_preamble
 
-        # Load rules from .mdfs/rules/ (--all includes alwaysApply: false)
-        include_all = getattr(self.args, "all", False)
-        rules = render_rules(self.root, include_all=include_all)
+        # Select rules by filename globs: config rules_always + --rules
+        patterns = list(config.get_rules_always())
+        patterns.extend(parse_rule_globs(getattr(self.args, "rules", None)))
+        rules = resolve_rules(config.get_rules_dir(self.root), patterns)
         query = getattr(self.args, "query", None)
 
         result = bundle(

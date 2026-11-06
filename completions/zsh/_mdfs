@@ -39,7 +39,7 @@ _mdfs() {
                         '-q[User question to append to the bundle]:query:' \
                         '--query[User question to append to the bundle]:query:' \
                         '--clip[Also copy the bundle to clipboard]' \
-                        '--all[Include rules marked alwaysApply: false]' \
+                        '--rules[Include rules by filename globs]:glob:' \
                         '--no-preamble[Disable preamble and table of contents]' \
                         '--no-gitignore[Include gitignored files]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \

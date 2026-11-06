@@ -1,4 +1,4 @@
-"""Tests for MDFS rules loading (.mdfs/rules/ with minimal frontmatter)."""
+"""Tests for MDFS rules loading (.mdfs/rules/, glob-based selection)."""
 
 import shutil
 import tempfile
@@ -6,155 +6,109 @@ import unittest
 from pathlib import Path
 
 from mdfs.core.rules import (
+    BUILTIN_RULE_NAME,
+    DEFAULT_RULE_NAME,
     Rule,
+    built_in_rule,
     load_rules,
-    parse_frontmatter,
     render_rule,
     render_rules,
+    resolve_rules,
 )
+from mdfs.default_system_prompt import DEFAULT_SYSTEM_PROMPT
 
 
-class TestParseFrontmatter(unittest.TestCase):
-    """Tests for minimal frontmatter parsing."""
-
-    def test_no_frontmatter(self):
-        meta, body = parse_frontmatter("# Just a rule\n- item")
-        self.assertEqual(meta, {})
-        self.assertEqual(body, "# Just a rule\n- item")
-
-    def test_frontmatter_with_scalar(self):
-        text = "---\nalwaysApply: true\n---\n# Body"
-        meta, body = parse_frontmatter(text)
-        self.assertEqual(meta["alwaysApply"], "true")
-        self.assertEqual(body, "# Body")
-
-    def test_frontmatter_with_always_apply_false(self):
-        text = "---\nalwaysApply: false\n---\nBody"
-        meta, _ = parse_frontmatter(text)
-        self.assertEqual(meta["alwaysApply"], "false")
-
-    def test_frontmatter_inline_comments_stripped(self):
-        text = "---\nalwaysApply: true  # always on\n---\nBody"
-        meta, _ = parse_frontmatter(text)
-        self.assertEqual(meta["alwaysApply"], "true")
-
-    def test_frontmatter_quotes_stripped(self):
-        text = "---\nalwaysApply: 'no'\n---\nBody"
-        meta, _ = parse_frontmatter(text)
-        self.assertEqual(meta["alwaysApply"], "no")
-
-    def test_frontmatter_without_closing_marker(self):
-        text = "---\nalwaysApply: true\n# Body without closing marker"
-        meta, body = parse_frontmatter(text)
-        self.assertEqual(meta, {})
-        self.assertEqual(body, text)
-
-    def test_frontmatter_multiline_body_preserved(self):
-        text = "---\nalwaysApply: true\n---\n# Title\n\n- line one\n- line two"
-        _, body = parse_frontmatter(text)
-        self.assertEqual(body, "# Title\n\n- line one\n- line two")
+def write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
 
 
 class TestLoadRules(unittest.TestCase):
+    """Selection of rule files by filename globs."""
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
-        self.root = Path(self.tmpdir)
-        self.rules = self.root / ".mdfs" / "rules"
-        self.rules.mkdir(parents=True)
+        self.rules = Path(self.tmpdir) / ".mdfs" / "rules"
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
     def test_missing_rules_dir(self):
-        empty_root = self.root / "nothing"
-        empty_root.mkdir()
-        self.assertEqual(load_rules(empty_root), [])
+        self.assertEqual(load_rules(Path(self.tmpdir) / "nothing", ["*"]), [])
 
-    def test_files_in_filesystem_order(self):
-        (self.rules / "z_last.md").write_text("Last", encoding="utf-8")
-        (self.rules / "a_first.md").write_text("First", encoding="utf-8")
-        (self.rules / "m_middle.md").write_text("Middle", encoding="utf-8")
-        result = load_rules(self.root)
+    def test_empty_patterns_select_nothing(self):
+        write(self.rules / "00-format.md", "Format")
+        self.assertEqual(load_rules(self.rules, []), [])
+
+    def test_files_in_filename_order(self):
+        write(self.rules / "z_last.md", "Last")
+        write(self.rules / "a_first.md", "First")
+        write(self.rules / "m_middle.md", "Middle")
+        result = load_rules(self.rules, ["*"])
         self.assertEqual([r.name for r in result],
                          ["a_first.md", "m_middle.md", "z_last.md"])
 
     def test_numeric_prefixes_control_order(self):
-        (self.rules / "90-last.md").write_text("Late", encoding="utf-8")
-        (self.rules / "00-first.md").write_text("Early", encoding="utf-8")
-        (self.rules / "10-middle.md").write_text("Middle", encoding="utf-8")
-        result = load_rules(self.root)
+        write(self.rules / "90-last.md", "Late")
+        write(self.rules / "00-first.md", "Early")
+        write(self.rules / "10-middle.md", "Middle")
+        result = load_rules(self.rules, ["*"])
         self.assertEqual([r.name for r in result],
                          ["00-first.md", "10-middle.md", "90-last.md"])
 
-    def test_prefixes_sort_before_plain_names(self):
-        (self.rules / "notes.md").write_text("Notes", encoding="utf-8")
-        (self.rules / "00-first.md").write_text("Early", encoding="utf-8")
-        result = load_rules(self.root)
+    def test_default_glob_selects_only_prefix_00(self):
+        write(self.rules / DEFAULT_RULE_NAME, "Format")
+        write(self.rules / "10-style.md", "Style")
+        result = load_rules(self.rules, ["00-*"])
+        self.assertEqual([r.name for r in result], [DEFAULT_RULE_NAME])
+
+    def test_multiple_globs_are_unioned(self):
+        write(self.rules / "00-format.md", "Format")
+        write(self.rules / "10-style.md", "Style")
+        write(self.rules / "20-domain.md", "Domain")
+        result = load_rules(self.rules, ["00-*", "1*"])
         self.assertEqual([r.name for r in result],
-                         ["00-first.md", "notes.md"])
+                         ["00-format.md", "10-style.md"])
 
-    def test_always_apply_false_excluded_by_default(self):
-        (self.rules / "always.md").write_text("Always", encoding="utf-8")
-        (self.rules / "optional.md").write_text(
-            "---\nalwaysApply: false\n---\nOptional", encoding="utf-8")
-        result = load_rules(self.root)
-        self.assertEqual([r.name for r in result], ["always.md"])
+    def test_star_glob_selects_everything(self):
+        write(self.rules / "00-format.md", "Format")
+        write(self.rules / "10-style.md", "Style")
+        write(self.rules / "notes.md", "Notes")
+        result = load_rules(self.rules, ["*"])
+        self.assertEqual(len(result), 3)
 
-    def test_include_all_includes_optional_rules(self):
-        (self.rules / "always.md").write_text("Always", encoding="utf-8")
-        (self.rules / "optional.md").write_text(
-            "---\nalwaysApply: false\n---\nOptional", encoding="utf-8")
-        result = load_rules(self.root, include_all=True)
-        self.assertEqual([r.name for r in result], ["always.md", "optional.md"])
+    def test_no_match_selects_nothing(self):
+        write(self.rules / "10-style.md", "Style")
+        self.assertEqual(load_rules(self.rules, ["2*"]), [])
 
-    def test_no_frontmatter_means_always_applied(self):
-        (self.rules / "plain.md").write_text("Plain rule", encoding="utf-8")
-        result = load_rules(self.root)
-        self.assertEqual(len(result), 1)
-        self.assertTrue(result[0].always_apply)
+    def test_non_md_and_empty_files_skipped(self):
+        write(self.rules / "notes.txt", "Not a rule")
+        write(self.rules / "empty.md", "")
+        write(self.rules / "10-style.md", "Style")
+        result = load_rules(self.rules, ["*"])
+        self.assertEqual([r.name for r in result], ["10-style.md"])
 
-    def test_frontmatter_stripped_from_body(self):
-        (self.rules / "meta.md").write_text(
-            "---\nalwaysApply: true\n---\n# Real content\n- item",
-            encoding="utf-8")
-        result = load_rules(self.root)
-        self.assertEqual(result[0].body, "# Real content\n- item")
+    def test_bodies_stripped(self):
+        write(self.rules / "10-style.md", "\n  Style body  \n")
+        result = load_rules(self.rules, ["*"])
+        self.assertEqual(result[0].body, "Style body")
 
-    def test_empty_files_skipped(self):
-        (self.rules / "empty.md").write_text("", encoding="utf-8")
-        (self.rules / "whitespace.md").write_text("   \n  \n", encoding="utf-8")
-        (self.rules / "only_frontmatter.md").write_text(
-            "---\nalwaysApply: true\n---\n", encoding="utf-8")
-        self.assertEqual(load_rules(self.root), [])
 
-    def test_non_md_files_ignored(self):
-        (self.rules / "notes.txt").write_text("Not a rule", encoding="utf-8")
-        self.assertEqual(load_rules(self.root), [])
+class TestBuiltInRule(unittest.TestCase):
 
-    def test_unknown_frontmatter_keys_ignored(self):
-        (self.rules / "extra.md").write_text(
-            "---\ndescription: Some rule\nversion: 2\n---\nBody",
-            encoding="utf-8")
-        result = load_rules(self.root)
-        self.assertEqual(len(result), 1)
-        self.assertTrue(result[0].always_apply)
-        self.assertEqual(result[0].body, "Body")
+    def test_name_and_body(self):
+        rule = built_in_rule()
+        self.assertEqual(rule.name, BUILTIN_RULE_NAME)
+        self.assertEqual(rule.body, DEFAULT_SYSTEM_PROMPT.rstrip())
 
-    def test_always_apply_false_string_variants(self):
-        for i, value in enumerate(("false", "no", "0", "off")):
-            name = f"opt_{i}.md"
-            (self.rules / name).write_text(
-                f"---\nalwaysApply: {value}\n---\nOptional",
-                encoding="utf-8")
-            result = load_rules(self.root, include_all=True)
-            self.assertFalse(result[i].always_apply, value)
+    def test_builtin_name_has_no_md_suffix(self):
+        self.assertFalse(BUILTIN_RULE_NAME.endswith(".md"))
 
 
 class TestRenderRule(unittest.TestCase):
 
     def test_render_rule_wraps_body_in_markers(self):
-        rule = Rule(name="10-style.md", always_apply=True, body="# Style\n- item")
+        rule = Rule(name="10-style.md", body="# Style\n- item")
         result = render_rule(rule)
         self.assertEqual(
             result,
@@ -166,19 +120,10 @@ class TestRenderRule(unittest.TestCase):
 
 class TestRenderRules(unittest.TestCase):
 
-    def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
-        self.root = Path(self.tmpdir)
-        self.rules = self.root / ".mdfs" / "rules"
-        self.rules.mkdir(parents=True)
-
-    def tearDown(self):
-        shutil.rmtree(self.tmpdir)
-
     def test_render_wraps_each_rule_in_markers(self):
-        (self.rules / "one.md").write_text("Rule one", encoding="utf-8")
-        (self.rules / "two.md").write_text("Rule two", encoding="utf-8")
-        result = render_rules(self.root)
+        rules = [Rule(name="one.md", body="Rule one"),
+                 Rule(name="two.md", body="Rule two")]
+        result = render_rules(rules)
         self.assertEqual(
             result,
             '<!-- mdfs:rule:start name="one.md" -->\n'
@@ -190,21 +135,55 @@ class TestRenderRules(unittest.TestCase):
             '<!-- mdfs:rule:end name="two.md" -->',
         )
 
-    def test_render_empty_when_no_rules(self):
-        self.assertEqual(render_rules(self.root), "")
+    def test_render_empty_list(self):
+        self.assertEqual(render_rules([]), "")
 
-    def test_render_respects_include_all(self):
-        (self.rules / "optional.md").write_text(
-            "---\nalwaysApply: false\n---\nOptional", encoding="utf-8")
-        self.assertEqual(render_rules(self.root), "")
-        self.assertIn("Optional", render_rules(self.root, include_all=True))
 
-    def test_render_strips_frontmatter(self):
-        (self.rules / "meta.md").write_text(
-            "---\nalwaysApply: true\n---\nBody here", encoding="utf-8")
-        result = render_rules(self.root)
-        self.assertIn("\nBody here\n", result)
-        self.assertNotIn("alwaysApply", result)
+class TestResolveRules(unittest.TestCase):
+    """Built-in fallback when 00-file-output-format.md is absent."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.rules = Path(self.tmpdir) / ".mdfs" / "rules"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_missing_dir_falls_back_to_builtin(self):
+        result = resolve_rules(self.rules, ["00-*"])
+        self.assertIn('name="default-file-output-format"', result)
+        self.assertIn("File Output Format", result)
+
+    def test_builtin_goes_first(self):
+        write(self.rules / "10-style.md", "Style")
+        result = resolve_rules(self.rules, ["1*"])
+        builtin_pos = result.find("default-file-output-format")
+        style_pos = result.find("name=\"10-style.md\"")
+        self.assertLess(builtin_pos, style_pos)
+
+    def test_project_file_present_no_builtin(self):
+        write(self.rules / DEFAULT_RULE_NAME, "Project format rule")
+        result = resolve_rules(self.rules, ["00-*"])
+        self.assertIn("Project format rule", result)
+        self.assertNotIn("default-file-output-format", result)
+
+    def test_file_present_but_not_selected_no_fallback(self):
+        write(self.rules / DEFAULT_RULE_NAME, "Project format rule")
+        write(self.rules / "10-style.md", "Style")
+        result = resolve_rules(self.rules, ["1*"])
+        self.assertIn("Style", result)
+        self.assertNotIn("File Output Format", result)
+
+    def test_nothing_selected_returns_empty(self):
+        write(self.rules / DEFAULT_RULE_NAME, "Project format rule")
+        self.assertEqual(resolve_rules(self.rules, ["9*"]), "")
+
+    def test_default_glob_on_project_dir(self):
+        write(self.rules / DEFAULT_RULE_NAME, "Project format rule")
+        write(self.rules / "10-style.md", "Style")
+        result = resolve_rules(self.rules, ["00-*"])
+        self.assertIn("Project format rule", result)
+        self.assertNotIn("Style", result)
 
 
 if __name__ == "__main__":

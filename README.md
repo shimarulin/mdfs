@@ -172,6 +172,14 @@ contexts_dir: ".mdfs/contexts"
 
 # Directory for LLM response files (default: .mdfs/responses)  
 responses_dir: ".mdfs/responses"
+
+# Directory with rule files (default: .mdfs/rules)
+rules_dir: ".mdfs/rules"
+
+# Rules included in every bundle (filename globs).
+# Default: only the file output format rule. Use ["*"] for all rules.
+rules_always:
+  - "00-*"
 ```
 
 ### Using Configuration
@@ -187,34 +195,30 @@ responses_dir: ".mdfs/responses"
 ### Rules (`.mdfs/rules/`)
 
 MDFS includes project rules in every bundle. Rules are plain Markdown
-files in `.mdfs/rules/` — no configuration needed.
+files in `.mdfs/rules/` — no frontmatter, no metadata: the entire file
+is the rule body.
 
-**Ordering** is fully controlled by the filesystem:
+**Selection** is by filename globs, **ordering** by the filesystem:
 
 1. Files are loaded in **filename order** — use numeric prefixes
    (`00-system.md`, `10-style.md`, `20-domain.md`) to pin the sequence
-2. `alwaysApply: false` marks a rule as optional — it is included
-   only with `bundle --all`
+2. Which rules are included is controlled by filename globs:
+   - config `rules_always` — rules included in **every** bundle
+     (default: `00-*`, i.e. only the file output format rule)
+   - `bundle --rules GLOB` — additional rules for a single bundle;
+     repeatable and comma-separated (`--rules '1*,2*'`), `*` = all
+3. The two glob sets are combined (union)
 
-That's the whole frontmatter — a single optional field:
-
-```markdown
----
-alwaysApply: true    # false = include only with `bundle --all` (default: true)
----
-# Answer style
-
-- Reply in the language of my message.
-- Give the conclusion first, reasoning after.
-```
+The file output format rule (`00-file-output-format.md`) is special:
+`mdfs init` writes it into the project, and if it is absent from the
+rules directory, the built-in copy shipped with the package is used
+automatically.
 
 **Notes:**
-- Files without frontmatter are always included (backward compatible)
-- Rule bodies are joined with blank lines; frontmatter is stripped
-- Non-markdown files, empty files and frontmatter-only files are skipped
+- Non-markdown files and empty files are skipped
 - Rules are inserted inside the rules block delimited by
   `<!-- mdfs:rules:start -->` / `<!-- mdfs:rules:end -->` HTML-comment
-  markers, after the built-in MDFS format rules; each rule is framed by
+  markers; each rule is framed by
   `<!-- mdfs:rule:start name="file.md" -->` / `<!-- mdfs:rule:end ... -->`
 - There is no token budget, truncation or dropping: every included rule
   file is written to the bundle in full
@@ -234,7 +238,8 @@ mdfs init -d /path/to/proj  # initialize in specific directory
 
 Creates:
 ```
-.mdfsrc.yaml                # Configuration file with default paths
+.mdfsrc.yaml                          # Configuration file with default paths
+.mdfs/rules/00-file-output-format.md  # File output format rule (editable copy)
 ```
 
 **Why**: Sets up configuration for MDFS workflow. Safe to run multiple times.
@@ -244,8 +249,10 @@ Creates:
 - Alternatively, you can create them manually: `mkdir -p .mdfs/{contexts,responses,rules}`
 - Add to `.gitignore`: `echo ".mdfs/contexts\n.mdfs/responses" >> .gitignore`
 
-> **Note**: System prompt rules are not created as a file on disk.
-> Use `mdfs rules` to view and copy the system prompt to clipboard.
+> **Note**: `00-file-output-format.md` is the built-in format rule as an
+> editable file — tune it to your project. If you delete it, the built-in
+> packaged copy is used instead. Use `mdfs rules` to view and copy the
+> packaged copy directly.
 
 ### `mdfs bundle`
 
@@ -258,7 +265,8 @@ mdfs bundle src/*.py -o custom.md      # custom output path
 mdfs bundle src/*.py -s prompt.md      # custom system prompt
 mdfs bundle src/*.py -q "Review this"  # append your question
 mdfs bundle src/*.py --clip            # also copy to clipboard
-mdfs bundle --all                      # include optional rules too
+mdfs bundle --rules '*'                # include all rules
+mdfs bundle --rules '10-*,20-*'        # include rules by filename globs
 mdfs bundle --no-preamble              # without table of contents
 mdfs bundle src/*.py --no-gitignore    # include .gitignore'd files
 ```
@@ -271,7 +279,7 @@ mdfs bundle src/*.py --no-gitignore    # include .gitignore'd files
 | `-o, --output` | Custom output path (default: `.mdfs/contexts/<timestamp>.md`) |
 | `-q, --query` | User question to append to the bundle |
 | `--clip` | Also copy the bundle to clipboard |
-| `--all` | Include all rules, including those with `alwaysApply: false` |
+| `--rules GLOB` | Extra rules to include, by filename globs (repeatable/comma-separated, `*` = all). On top of config `rules_always` |
 | `--no-preamble` | Disable preamble and table of contents |
 | `--no-gitignore` | Include files that are in `.gitignore` |
 
