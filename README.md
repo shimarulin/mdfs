@@ -32,7 +32,7 @@ with special markers, so the LLM can read and produce them correctly.
 - **Clipboard integration** — paste LLM response directly from clipboard
 - **Chronological history** — contexts and responses are timestamped
 - **Zero dependencies** — Python 3.10+ stdlib only
-- **Shell completions** — zsh and bash
+- **Shell completions** — zsh, bash, and fish
 
 ## Installation
 
@@ -121,8 +121,8 @@ mdfs bundle src/app.py src/lib.py docs/api.md -l "add auth module"
 #    📝 "Implement authentication module..."
 
 # 4. Copy LLM response to clipboard, then:
-mdfs paste -l "add auth module" --extract
-#   📋 Response saved: .mdfs/responses/2026-04-04_144500__add_auth_module.md
+mdfs paste "add auth module" --extract
+#   📋 Response saved: .mdfs/responses/2026-04-04_144500__Add_auth_module.md
 #      3 file(s), 1 patch(es) detected
 #   Extracting...
 #   📄 write  src/auth.py
@@ -157,13 +157,18 @@ The configuration file is automatically searched starting from your current dire
 mdfs bundle src/ --contexts-dir ./my-contexts
 mdfs paste response --responses-dir ./my-responses -x
 mdfs log --contexts-dir ./my-contexts
+mdfs log -d /path/to/project
 ```
 
 | Flag | Description |
 |------|-------------|
+| `-d, --dir` | Project directory (default: current) |
 | `--contexts-dir` | Override contexts directory path |
 | `--responses-dir` | Override responses directory path |
 | `--rules-dir` | Override rules directory path |
+
+All four flags work both before and after the subcommand
+(`mdfs -d X log` and `mdfs log -d X` are equivalent).
 
 **Example `.mdfsrc.yaml`:**
 
@@ -321,7 +326,8 @@ mdfs paste "my label" -x --dry-run         # preview without writing
 - Label is a positional argument (not a flag), comes after `mdfs paste`
 - Without `--extract`, only saves the response file, doesn't process it
 - With `--extract`, also extracts files and applies patches (useful for single-command workflow)
-- `--dry-run` works with both save and extract modes
+- `--dry-run` writes nothing: with or without `--extract`, it only reports the detected files/patches and the path the response would be saved to
+- Empty clipboard: prints an error and exits with code `1`
 
 ### `mdfs extract`
 
@@ -350,10 +356,13 @@ Show chronological history of contexts and responses in `.mdfs/`.
 
 ```bash
 mdfs log              # show all contexts and responses
-mdfs log -d /path    # show history for specific project directory
+mdfs log -d /path     # show history for specific project directory
 ```
 
 Displays all bundled contexts and LLM responses with timestamps.
+
+`-d, --dir` is a global flag: it works before and after the subcommand
+(`mdfs -d /path log` and `mdfs log -d /path` are equivalent).
 
 ## File format (MDFS markers)
 
@@ -542,7 +551,7 @@ When you run `mdfs setup -i`, it:
 ```bash
 # Add to ~/.zshenv (for PATH — needed everywhere):
 export PATH="/path/to/mdfs/bin:$PATH"
-fpath=(/path/to/mdfs/completions/zsh $fpath)
+fpath=(/path/to/mdfs/mdfs/completions/zsh $fpath)
 
 # Add to ~/.zshrc (for interactive shells):
 autoload -Uz compinit && compinit
@@ -552,13 +561,15 @@ autoload -Uz compinit && compinit
 ```bash
 # Add to ~/.bashrc (or ~/.bash_profile on macOS):
 export PATH="/path/to/mdfs/bin:$PATH"
-[[ -f /path/to/mdfs/completions/bash/mdfs ]] && source /path/to/mdfs/completions/bash/mdfs
+[[ -f /path/to/mdfs/mdfs/completions/bash/mdfs ]] && source /path/to/mdfs/mdfs/completions/bash/mdfs
 ```
 
 **For fish:**
 ```bash
 # Add to ~/.config/fish/conf.d/mdfs.fish:
 fish_add_path /path/to/mdfs/bin
+# Copy the completion script:
+cp /path/to/mdfs/mdfs/completions/fish/mdfs.fish ~/.config/fish/completions/
 ```
 
 ## Development

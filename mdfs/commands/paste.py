@@ -37,29 +37,30 @@ class PasteCommand(BaseCommand):
         self.apply_config_overrides(config)
 
         content = get_clipboard()
-        
+
         # Check if clipboard is empty before processing
         if not content.strip():
             print("Error: clipboard is empty.", file=sys.stderr)
-            # Return 1 if not extracting
-            if not self.args.extract:
-                return 1
-            # If extracting with empty clipboard, return 0
-            return 0
-        
+            return 1
+
         filename = make_filename(self.args.label)
         out_path = config.get_responses_dir(self.root) / filename
-
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(content, encoding="utf-8")
 
         blocks = parse(content)
         files, patches = split_files_and_patches(blocks)
 
-        print(
-            f"  📋 Response saved: {out_path.relative_to(self.root)}",
-            file=sys.stderr,
-        )
+        try:
+            display_path = out_path.relative_to(self.root)
+        except ValueError:
+            display_path = out_path
+
+        if self.args.dry_run:
+            # Preview only: no response file is written
+            print(f"  📋 Would save response: {display_path}", file=sys.stderr)
+        else:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(content, encoding="utf-8")
+            print(f"  📋 Response saved: {display_path}", file=sys.stderr)
         print(
             f"     {len(files)} file(s), {len(patches)} patch(es) detected",
             file=sys.stderr,

@@ -20,11 +20,35 @@ import pytest
 from mdfs.shell_setup import (
     detect_shell,
     get_shell_config_files,
+    get_completions_dir,
+    check_shell_completions,
     resolve_symlink,
     backup_file,
     upsert_block,
     remove_block,
 )
+
+
+# ── Completions Directory ─────────────────────────────────────────
+
+class TestCompletionsDir:
+    """Tests for packaged completions directory helpers."""
+
+    def test_get_completions_dir_is_packaged(self):
+        """get_completions_dir points inside the mdfs package."""
+        import mdfs
+
+        assert get_completions_dir() == Path(mdfs.__file__).parent / "completions"
+
+    def test_check_shell_completions_matches_packaged_scripts(self):
+        """All three shells have packaged completion scripts."""
+        for shell, name in (("zsh", "_mdfs"), ("bash", "mdfs"), ("fish", "mdfs.fish")):
+            assert (get_completions_dir() / shell / name).exists(), shell
+            assert check_shell_completions(shell) is True
+
+    def test_check_shell_completions_unknown(self):
+        """Unknown shell has no completions."""
+        assert check_shell_completions("unknown") is False
 
 
 # ── Shell Detection ───────────────────────────────────────────────

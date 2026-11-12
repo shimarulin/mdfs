@@ -58,14 +58,18 @@ def _get_version() -> str:
     return "unknown"
 
 
-# Shared parent for the directory overrides: accepted both before and
-# after the subcommand (`mdfs --rules-dir X bundle ...` and
-# `mdfs bundle --rules-dir X ...` both work).
+# Shared parent for the directory overrides and the project directory:
+# accepted both before and after the subcommand (`mdfs -d X log` and
+# `mdfs log -d X` both work, same for --rules-dir and friends).
 def _make_overrides_parent() -> argparse.ArgumentParser:
     parent = argparse.ArgumentParser(add_help=False)
     # SUPPRESS keeps the main-parser value intact when the subparser
     # (same parent) does not see the flag: without it, subparser defaults
-    # would clobber `mdfs --rules-dir X bundle ...` with None.
+    # would clobber `mdfs -d X bundle ...` with None.
+    parent.add_argument(
+        "-d", "--dir", default=argparse.SUPPRESS,
+        help="Project directory (default: current)",
+    )
     parent.add_argument(
         "--contexts-dir", default=argparse.SUPPRESS,
         help="Override contexts directory (overrides .mdfsrc.yaml)",
@@ -97,10 +101,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-v", "--version", action="version",
         version=f"%(prog)s {_get_version()}",
-    )
-    parser.add_argument(
-        "-d", "--dir", default=".",
-        help="Project directory (default: current)",
     )
     sub = parser.add_subparsers(dest="command", required=False)
 
@@ -134,13 +134,15 @@ def build_parser() -> argparse.ArgumentParser:
                          help="Label for the response file (optional)")
     p_paste.add_argument("-x", "--extract", action="store_true",
                          help="Also extract files and apply patches")
-    p_paste.add_argument("--dry-run", action="store_true")
+    p_paste.add_argument("--dry-run", action="store_true",
+                         help="Show what would happen without writing")
 
     p_extract = sub.add_parser("extract", help="Extract files from Markdown",
                                parents=[overrides])
     p_extract.add_argument("input",
                            help="Input Markdown file")
-    p_extract.add_argument("--dry-run", action="store_true")
+    p_extract.add_argument("--dry-run", action="store_true",
+                           help="Show actions without writing")
     p_extract.add_argument("-f", "--force", action="store_true",
                            help="Force overwrite all existing files")
 

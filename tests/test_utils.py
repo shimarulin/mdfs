@@ -13,10 +13,6 @@ from mdfs.utils import (
     make_filename,
     get_clipboard,
     find_mdfs_root,
-    mdfs_dir,
-    rules_dir,
-    contexts_dir,
-    responses_dir,
     print_actions,
 )
 
@@ -216,36 +212,6 @@ class TestFindMdfsRoot(unittest.TestCase):
             self.assertEqual(result, Path(self.tmpdir).resolve())
         finally:
             os.chdir(old_cwd)
-
-    def tearDown(self):
-        shutil.rmtree(self.tmpdir)
-
-
-class TestPathHelpers(unittest.TestCase):
-    """Tests for path helper functions."""
-
-    def setUp(self):
-        self.tmpdir = Path(tempfile.mkdtemp())
-
-    def test_mdfs_dir(self):
-        """Test mdfs_dir returns correct path."""
-        result = mdfs_dir(self.tmpdir)
-        self.assertEqual(result, self.tmpdir / ".mdfs")
-
-    def test_rules_dir(self):
-        """Test rules_dir returns correct path."""
-        result = rules_dir(self.tmpdir)
-        self.assertEqual(result, self.tmpdir / ".mdfs" / "rules")
-
-    def test_contexts_dir(self):
-        """Test contexts_dir returns correct path."""
-        result = contexts_dir(self.tmpdir)
-        self.assertEqual(result, self.tmpdir / ".mdfs" / "contexts")
-
-    def test_responses_dir(self):
-        """Test responses_dir returns correct path."""
-        result = responses_dir(self.tmpdir)
-        self.assertEqual(result, self.tmpdir / ".mdfs" / "responses")
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
