@@ -126,6 +126,9 @@ class CommandNameCommand:
 
 **Parameters**:
 - `-d, --dir` (optional, global flag): Project directory (default: current) — accepted before and after the subcommand (`mdfs -d X init` and `mdfs init -d X`)
+- `--contexts-dir` (optional, global flag): Override contexts directory (saved to `.mdfsrc.yaml`)
+- `--responses-dir` (optional, global flag): Override responses directory (saved to `.mdfsrc.yaml`)
+- `--rules-dir` (optional, global flag): Override rules directory (saved to `.mdfsrc.yaml`)
 
 **Creates**:
 ```
@@ -135,6 +138,7 @@ class CommandNameCommand:
 **Notes**:
 - Creates `.mdfsrc.yaml` configuration file
 - Writes the file output format rule (`00-file-output-format.md`) into the rules directory (skipped if it already exists)
+- Directory override flags (`--contexts-dir`, `--responses-dir`, `--rules-dir`) are persisted back to `.mdfsrc.yaml` while preserving existing comments and structure
 - Other directories are created automatically by `bundle`, `paste`, and other commands as needed
 - Users can customize directory paths in `.mdfsrc.yaml` before using other commands
 - Safe to run multiple times (idempotent)
@@ -326,7 +330,7 @@ rules directory the built-in packaged copy is used (prepended first).
 
 ### Command-line Config Overrides
 
-All commands support global flags to override configuration values (take precedence over `.mdfsrc.yaml`):
+All commands except `setup` support global flags to override configuration values (take precedence over `.mdfsrc.yaml`):
 
 - `-d, --dir PATH` — Project directory (default: current)
 - `--contexts-dir PATH` — Override contexts directory

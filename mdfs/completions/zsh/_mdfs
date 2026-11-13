@@ -29,6 +29,8 @@ _mdfs() {
             case "$words[1]" in
                 init)
                     _arguments \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
                         '--responses-dir[Override responses directory]:directory:_directories' \
                         '--rules-dir[Override rules directory]:directory:_directories'
@@ -36,6 +38,8 @@ _mdfs() {
                 bundle)
                     _arguments \
                         '*:file:_files' \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
                         '-l[Label for context file]:label:' \
                         '--label[Label for context file]:label:' \
                         '-o[Output file]:file:_files' \
@@ -53,6 +57,8 @@ _mdfs() {
                 paste)
                     _arguments \
                         ':label: ' \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
                         '-x[Also extract files and apply patches]' \
                         '--extract[Also extract files and apply patches]' \
                         '--dry-run[Show what would happen without writing]' \
@@ -63,6 +69,8 @@ _mdfs() {
                 extract)
                     _arguments \
                         ':input:file:_files' \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
                         '-f[Force overwrite all existing files]' \
                         '--force[Force overwrite all existing files]' \
                         '--dry-run[Show actions without writing]' \
@@ -72,6 +80,8 @@ _mdfs() {
                     ;;
                 log)
                     _arguments \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
                         '--responses-dir[Override responses directory]:directory:_directories' \
                         '--rules-dir[Override rules directory]:directory:_directories'

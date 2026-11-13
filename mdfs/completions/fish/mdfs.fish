@@ -15,11 +15,13 @@ complete -c mdfs -l rules-dir -r -d 'Override rules directory (overrides .mdfsrc
 complete -c mdfs -s v -l version -d 'Show version'
 
 # init
+complete -c mdfs -n '__fish_seen_subcommand_from init' -s d -l dir -r -d 'Project directory'
 complete -c mdfs -n '__fish_seen_subcommand_from init' -l contexts-dir -r -d 'Override contexts directory'
 complete -c mdfs -n '__fish_seen_subcommand_from init' -l responses-dir -r -d 'Override responses directory'
 complete -c mdfs -n '__fish_seen_subcommand_from init' -l rules-dir -r -d 'Override rules directory'
 
 # bundle
+complete -c mdfs -n '__fish_seen_subcommand_from bundle' -s d -l dir -r -d 'Project directory'
 complete -c mdfs -n '__fish_seen_subcommand_from bundle' -s l -l label -r -d 'Label for the context file'
 complete -c mdfs -n '__fish_seen_subcommand_from bundle' -s o -l output -r -d 'Custom output path'
 complete -c mdfs -n '__fish_seen_subcommand_from bundle' -s q -l query -r -d 'User question to append to the bundle'
@@ -32,6 +34,7 @@ complete -c mdfs -n '__fish_seen_subcommand_from bundle' -l responses-dir -r -d 
 complete -c mdfs -n '__fish_seen_subcommand_from bundle' -l rules-dir -r -d 'Override rules directory'
 
 # paste
+complete -c mdfs -n '__fish_seen_subcommand_from paste' -s d -l dir -r -d 'Project directory'
 complete -c mdfs -n '__fish_seen_subcommand_from paste' -s x -l extract -d 'Also extract files and apply patches'
 complete -c mdfs -n '__fish_seen_subcommand_from paste' -l dry-run -d 'Show what would happen without writing'
 complete -c mdfs -n '__fish_seen_subcommand_from paste' -l contexts-dir -r -d 'Override contexts directory'
@@ -39,6 +42,7 @@ complete -c mdfs -n '__fish_seen_subcommand_from paste' -l responses-dir -r -d '
 complete -c mdfs -n '__fish_seen_subcommand_from paste' -l rules-dir -r -d 'Override rules directory'
 
 # extract
+complete -c mdfs -n '__fish_seen_subcommand_from extract' -s d -l dir -r -d 'Project directory'
 complete -c mdfs -n '__fish_seen_subcommand_from extract' -s f -l force -d 'Force overwrite all existing files'
 complete -c mdfs -n '__fish_seen_subcommand_from extract' -l dry-run -d 'Show actions without writing'
 complete -c mdfs -n '__fish_seen_subcommand_from extract' -l contexts-dir -r -d 'Override contexts directory'
@@ -46,6 +50,7 @@ complete -c mdfs -n '__fish_seen_subcommand_from extract' -l responses-dir -r -d
 complete -c mdfs -n '__fish_seen_subcommand_from extract' -l rules-dir -r -d 'Override rules directory'
 
 # log
+complete -c mdfs -n '__fish_seen_subcommand_from log' -s d -l dir -r -d 'Project directory'
 complete -c mdfs -n '__fish_seen_subcommand_from log' -l contexts-dir -r -d 'Override contexts directory'
 complete -c mdfs -n '__fish_seen_subcommand_from log' -l responses-dir -r -d 'Override responses directory'
 complete -c mdfs -n '__fish_seen_subcommand_from log' -l rules-dir -r -d 'Override rules directory'

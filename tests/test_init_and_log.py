@@ -59,6 +59,44 @@ class TestInit(unittest.TestCase):
                          / "00-file-output-format.md")
             self.assertTrue(rule_file.is_file())
 
+    def test_saves_override_to_config(self):
+        """Init with --rules-dir persists the override to .mdfsrc.yaml."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cmd = InitCommand(argparse.Namespace(
+                dir=tmpdir, contexts_dir=None, responses_dir=None,
+                rules_dir="custom-rules"))
+            cmd.execute()
+            config_file = Path(tmpdir) / ".mdfsrc.yaml"
+            text = config_file.read_text(encoding="utf-8")
+            self.assertIn('rules_dir: "custom-rules"', text)
+
+    def test_preserves_comments_when_saving_overrides(self):
+        """Saving overrides preserves existing comments in .mdfsrc.yaml."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_file = Path(tmpdir) / ".mdfsrc.yaml"
+            config_file.write_text(
+                "# MDFS Configuration\n"
+                "# This file configures the MDFS tool\n"
+                "\n"
+                "# Directory for bundled context files\n"
+                'contexts_dir: ".mdfs/contexts"\n'
+                "\n"
+                "# Directory for LLM response files\n"
+                'responses_dir: ".mdfs/responses"\n'
+                "\n"
+                "# Directory with rule files\n"
+                'rules_dir: ".mdfs/rules"\n',
+                encoding="utf-8",
+            )
+            cmd = InitCommand(argparse.Namespace(
+                dir=tmpdir, contexts_dir=None, responses_dir=None,
+                rules_dir="my-rules"))
+            cmd.execute()
+            text = config_file.read_text(encoding="utf-8")
+            self.assertIn("# MDFS Configuration", text)
+            self.assertIn("# Directory for bundled context files", text)
+            self.assertIn('rules_dir: "my-rules"', text)
+
 
 class TestLog(unittest.TestCase):
 

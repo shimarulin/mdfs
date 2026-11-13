@@ -29,34 +29,34 @@ _mdfs() {
     case "$cmd" in
         init)
             case "$prev" in
-                $overrides) _filedir; return ;;
+                -d|--dir|$overrides) _filedir; return ;;
             esac
-            COMPREPLY=($(compgen -W "$overrides" -- "$cur"))
+            COMPREPLY=($(compgen -W "-d --dir $overrides" -- "$cur"))
             ;;
         bundle)
             case "$prev" in
-                -o|--output|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+                -d|--dir|-o|--output|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
                 -l|--label|-q|--query|--rules) return ;;
             esac
-            COMPREPLY=($(compgen -W "-l --label -o --output -q --query --clip --rules --no-preamble --no-gitignore $overrides" -- "$cur"))
+            COMPREPLY=($(compgen -W "-d --dir -l --label -o --output -q --query --clip --rules --no-preamble --no-gitignore $overrides" -- "$cur"))
             ;;
         paste)
             case "$prev" in
-                --contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+                -d|--dir|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
             esac
-            COMPREPLY=($(compgen -W "-x --extract --dry-run $overrides" -- "$cur"))
+            COMPREPLY=($(compgen -W "-d --dir -x --extract --dry-run $overrides" -- "$cur"))
             ;;
         extract)
             case "$prev" in
-                --contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+                -d|--dir|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
             esac
-            COMPREPLY=($(compgen -W "-f --force --dry-run $overrides" -- "$cur"))
+            COMPREPLY=($(compgen -W "-d --dir -f --force --dry-run $overrides" -- "$cur"))
             ;;
         log)
             case "$prev" in
-                $overrides) _filedir; return ;;
+                -d|--dir|$overrides) _filedir; return ;;
             esac
-            COMPREPLY=($(compgen -W "$overrides" -- "$cur"))
+            COMPREPLY=($(compgen -W "-d --dir $overrides" -- "$cur"))
             ;;
         setup)
             COMPREPLY=($(compgen -W "-i --install-completions -u --uninstall-completions" -- "$cur"))

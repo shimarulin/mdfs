@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from argparse import Namespace
 from pathlib import Path
@@ -46,6 +47,31 @@ class InitCommand(BaseCommand):
 
         # Create the default rule file (unless configured otherwise)
         config = Config(config_path)
+        self.apply_config_overrides(config)
+
+        # Persist overrides back to .mdfsrc.yaml while preserving comments
+        has_overrides = any([
+            getattr(self.args, "contexts_dir", None),
+            getattr(self.args, "responses_dir", None),
+            getattr(self.args, "rules_dir", None),
+        ])
+        if has_overrides:
+            config_text = config_path.read_text(encoding="utf-8")
+            for key, value in [
+                ("contexts_dir", getattr(self.args, "contexts_dir", None)),
+                ("responses_dir", getattr(self.args, "responses_dir", None)),
+                ("rules_dir", getattr(self.args, "rules_dir", None)),
+            ]:
+                if value is not None:
+                    pattern = rf"^({key}:).*$"
+                    if re.search(pattern, config_text, re.MULTILINE):
+                        config_text = re.sub(
+                            pattern, rf'\1 "{value}"', config_text, flags=re.MULTILINE
+                        )
+                    else:
+                        config_text = config_text.rstrip() + f'\n{key}: "{value}"\n'
+            config_path.write_text(config_text, encoding="utf-8")
+
         rules_dir = config.get_rules_dir(self.root)
         rule_path = rules_dir / DEFAULT_RULE_NAME
         if rule_path.exists():

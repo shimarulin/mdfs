@@ -804,7 +804,7 @@ class TestCliOverridePlacement(unittest.TestCase):
         self.assertEqual(args.dir, "/tmp/x")
 
     def test_overrides_on_all_subcommands(self):
-        """Every subcommand accepts the directory overrides."""
+        """Every subcommand except setup accepts the directory overrides."""
         from mdfs.__main__ import build_parser
 
         parser = build_parser()
@@ -813,10 +813,17 @@ class TestCliOverridePlacement(unittest.TestCase):
             ["paste", "-x"],
             ["extract", "in.md"],
             ["log"],
-            ["setup"],
         ):
             args = parser.parse_args([*argv, "--responses-dir", "r"])
             self.assertEqual(args.responses_dir, "r", msg=str(argv))
+
+    def test_setup_rejects_overrides(self):
+        """Setup does not accept directory overrides."""
+        from mdfs.__main__ import build_parser
+
+        parser = build_parser()
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["setup", "--responses-dir", "r"])
 
 
 if __name__ == "__main__":

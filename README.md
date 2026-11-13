@@ -151,7 +151,7 @@ MDFS supports optional configuration via `.mdfsrc.yaml` file, allowing you to:
 
 The configuration file is automatically searched starting from your current directory and moving up to the filesystem root.
 
-**Command-line overrides**: You can override configuration values using global flags that take precedence over `.mdfsrc.yaml`:
+**Command-line overrides**: You can override configuration values using global flags that take precedence over `.mdfsrc.yaml` (all commands except `setup`):
 
 ```bash
 mdfs bundle src/ --contexts-dir ./my-contexts
@@ -240,6 +240,7 @@ Create `.mdfsrc.yaml` configuration file in the current project.
 ```bash
 mdfs init                   # initialize in current directory
 mdfs init -d /path/to/proj  # initialize in specific directory
+mdfs init --rules-dir ./my-rules  # customize rules directory (saved to config)
 ```
 
 Creates:
@@ -258,6 +259,9 @@ Creates:
 > **Note**: `00-file-output-format.md` is the built-in format rule as an
 > editable file — tune it to your project. If you delete it, the built-in
 > packaged copy is used instead.
+>
+> Directory override flags (`--contexts-dir`, `--responses-dir`, `--rules-dir`)
+> are persisted back to `.mdfsrc.yaml` while preserving existing comments.
 
 ### `mdfs bundle`
 

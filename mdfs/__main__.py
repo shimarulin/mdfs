@@ -148,8 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("log", help="Show chronological log", parents=[overrides])
 
-    p_setup = sub.add_parser("setup", help="Install/uninstall shell completions",
-                             parents=[overrides])
+    p_setup = sub.add_parser("setup", help="Install/uninstall shell completions")
     p_setup.add_argument(
         "-i", "--install-completions",
         action="store_true",
