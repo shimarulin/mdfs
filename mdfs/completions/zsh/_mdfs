@@ -4,20 +4,22 @@ _mdfs() {
     local -a commands
     commands=(
         'init:Initialize .mdfs directory structure'
-        'bundle:Bundle project files into a context Markdown file'
+        'bundle:Bundle rules and/or files into a context Markdown file'
         'paste:Save clipboard as response, optionally extract files'
         'extract:Extract files and apply patches from Markdown'
         'log:Show chronological log of contexts and responses'
+        'setup:Install/uninstall shell completions'
     )
 
     _arguments -C \
+        '(-)1:command:->command' \
+        '*::arg:->args' \
         '-d[Project directory]:directory:_directories' \
         '--dir[Project directory]:directory:_directories' \
         '--contexts-dir[Override contexts directory]:directory:_directories' \
         '--responses-dir[Override responses directory]:directory:_directories' \
         '--rules-dir[Override rules directory]:directory:_directories' \
-        '1:command:->command' \
-        '*::arg:->args'
+        '(-v --version)'{-v,--version}'[Show version]'
 
     case "$state" in
         command)
@@ -25,10 +27,19 @@ _mdfs() {
             ;;
         args)
             case "$words[1]" in
-                init) ;;
+                init)
+                    _arguments \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
+                        '--contexts-dir[Override contexts directory]:directory:_directories' \
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--rules-dir[Override rules directory]:directory:_directories'
+                    ;;
                 bundle)
                     _arguments \
                         '*:file:_files' \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
                         '-l[Label for context file]:label:' \
                         '--label[Label for context file]:label:' \
                         '-o[Output file]:file:_files' \
@@ -45,25 +56,43 @@ _mdfs() {
                     ;;
                 paste)
                     _arguments \
-                        '-l[Label for response file]:label:' \
-                        '--label[Label for response file]:label:' \
-                        '-x[Also extract files]' \
-                        '--extract[Also extract files]' \
-                        '--dry-run[Show actions without writing]' \
+                        ':label: ' \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
+                        '-x[Also extract files and apply patches]' \
+                        '--extract[Also extract files and apply patches]' \
+                        '--dry-run[Show what would happen without writing]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
                         '--responses-dir[Override responses directory]:directory:_directories' \
                         '--rules-dir[Override rules directory]:directory:_directories'
                     ;;
                 extract)
                     _arguments \
-                        '-i[Input Markdown file]:file:_files' \
-                        '--input[Input Markdown file]:file:_files' \
+                        ':input:file:_files' \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
+                        '-f[Force overwrite all existing files]' \
+                        '--force[Force overwrite all existing files]' \
                         '--dry-run[Show actions without writing]' \
                         '--contexts-dir[Override contexts directory]:directory:_directories' \
                         '--responses-dir[Override responses directory]:directory:_directories' \
                         '--rules-dir[Override rules directory]:directory:_directories'
                     ;;
-                log) ;;
+                log)
+                    _arguments \
+                        '-d[Project directory]:directory:_directories' \
+                        '--dir[Project directory]:directory:_directories' \
+                        '--contexts-dir[Override contexts directory]:directory:_directories' \
+                        '--responses-dir[Override responses directory]:directory:_directories' \
+                        '--rules-dir[Override rules directory]:directory:_directories'
+                    ;;
+                setup)
+                    _arguments \
+                        '-i[Install shell completions for current shell]' \
+                        '--install-completions[Install shell completions for current shell]' \
+                        '-u[Uninstall shell completions]' \
+                        '--uninstall-completions[Uninstall shell completions]'
+                    ;;
             esac
             ;;
     esac

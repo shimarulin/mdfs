@@ -413,7 +413,7 @@ class TestPasteCommand(unittest.TestCase):
         src.mkdir()
         (src / "main.py").write_text("x = 1\n", encoding="utf-8")
 
-    @patch("mdfs.utils.get_clipboard")
+    @patch("mdfs.commands.paste.get_clipboard")
     def test_paste_saves_response(self, mock_clipboard):
         """Test that paste saves clipboard content as response file."""
         mock_clipboard.return_value = (
@@ -438,7 +438,45 @@ class TestPasteCommand(unittest.TestCase):
         self.assertEqual(len(responses), 1)
         self.assertIn("Response1", responses[0].name)
 
-    @patch("mdfs.utils.get_clipboard")
+    @patch("mdfs.commands.paste.get_clipboard")
+    def test_paste_dry_run_writes_nothing(self, mock_clipboard):
+        """Test that paste --dry-run doesn't write the response file."""
+        mock_clipboard.return_value = (
+            "# LLM Response\n"
+            "<!-- file: src/new.py -->\n"
+            "```python\n"
+            "y = 2\n"
+            "```\n"
+        )
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            label="dryrun",
+            extract=False,
+            dry_run=True,
+        )
+        cmd = PasteCommand(args)
+        exit_code = cmd.execute()
+
+        self.assertEqual(exit_code, 0)
+        responses = list((self.project_root / ".mdfs" / "responses").glob("*.md"))
+        self.assertEqual(responses, [])
+
+    @patch("mdfs.commands.paste.get_clipboard")
+    def test_paste_empty_clipboard_fails_with_extract(self, mock_clipboard):
+        """Test empty clipboard returns 1 even with --extract."""
+        mock_clipboard.return_value = ""
+
+        args = argparse.Namespace(
+            dir=str(self.project_root),
+            label=None,
+            extract=True,
+            dry_run=False,
+        )
+        cmd = PasteCommand(args)
+        self.assertEqual(cmd.execute(), 1)
+
+    @patch("mdfs.commands.paste.get_clipboard")
     def test_paste_and_extract(self, mock_clipboard):
         """Test paste with extract flag - just verify no errors on extraction."""
         # Need to initialize .mdfs first
@@ -631,7 +669,7 @@ class TestPasteErrorHandling(unittest.TestCase):
         (self.project_root / ".mdfs").mkdir()
         (self.project_root / ".mdfs" / "responses").mkdir(parents=True)
 
-    @patch("mdfs.utils.get_clipboard")
+    @patch("mdfs.commands.paste.get_clipboard")
     def test_paste_with_valid_content(self, mock_clipboard):
         """Test paste command with valid clipboard content."""
         mock_clipboard.return_value = (
@@ -659,7 +697,7 @@ class TestPasteErrorHandling(unittest.TestCase):
         responses = list((self.project_root / ".mdfs" / "responses").glob("*.md"))
         self.assertEqual(len(responses), 1)
 
-    @patch("mdfs.utils.get_clipboard")
+    @patch("mdfs.commands.paste.get_clipboard")
     def test_paste_without_label(self, mock_clipboard):
         """Test paste command without label argument."""
         mock_clipboard.return_value = (
@@ -725,10 +763,6 @@ class TestFindMdfsRoot(unittest.TestCase):
         shutil.rmtree(self.tmpdir)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestCliOverridePlacement(unittest.TestCase):
     """Directory overrides work before AND after the subcommand."""
 
@@ -753,8 +787,24 @@ class TestCliOverridePlacement(unittest.TestCase):
         self.assertEqual(args.command, "bundle")
         self.assertEqual(args.rules_dir, "alt")
 
+    def test_dir_flag_after_subcommand(self):
+        """`mdfs log -d X` parses like `mdfs -d X log`."""
+        from mdfs.__main__ import build_parser
+
+        args = build_parser().parse_args(["log", "-d", "/tmp"])
+        self.assertEqual(args.command, "log")
+        self.assertEqual(args.dir, "/tmp")
+
+        args = build_parser().parse_args(["-d", "/tmp", "log"])
+        self.assertEqual(args.command, "log")
+        self.assertEqual(args.dir, "/tmp")
+
+        args = build_parser().parse_args(["init", "--dir", "/tmp/x"])
+        self.assertEqual(args.command, "init")
+        self.assertEqual(args.dir, "/tmp/x")
+
     def test_overrides_on_all_subcommands(self):
-        """Every subcommand accepts the directory overrides."""
+        """Every subcommand except setup accepts the directory overrides."""
         from mdfs.__main__ import build_parser
 
         parser = build_parser()
@@ -763,7 +813,18 @@ class TestCliOverridePlacement(unittest.TestCase):
             ["paste", "-x"],
             ["extract", "in.md"],
             ["log"],
-            ["setup"],
         ):
             args = parser.parse_args([*argv, "--responses-dir", "r"])
             self.assertEqual(args.responses_dir, "r", msg=str(argv))
+
+    def test_setup_rejects_overrides(self):
+        """Setup does not accept directory overrides."""
+        from mdfs.__main__ import build_parser
+
+        parser = build_parser()
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["setup", "--responses-dir", "r"])
+
+
+if __name__ == "__main__":
+    unittest.main()

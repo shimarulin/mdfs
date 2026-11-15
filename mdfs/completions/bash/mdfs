@@ -1,0 +1,67 @@
+# Bash completion for mdfs
+
+_mdfs() {
+    local cur prev words cword
+    _init_completion || return
+
+    local commands="init bundle paste extract log setup"
+
+    local cmd=""
+    local i
+    for ((i = 1; i < cword; i++)); do
+        case "${words[i]}" in
+            -d|--dir|--contexts-dir|--responses-dir|--rules-dir) ((i++)) ;;
+            init|bundle|paste|extract|log|setup) cmd="${words[i]}"; break ;;
+        esac
+    done
+
+    local overrides="--contexts-dir --responses-dir --rules-dir"
+
+    if [[ -z "$cmd" ]]; then
+        if [[ "$cur" == -* ]]; then
+            COMPREPLY=($(compgen -W "-d --dir -v --version $overrides" -- "$cur"))
+        else
+            COMPREPLY=($(compgen -W "$commands" -- "$cur"))
+        fi
+        return
+    fi
+
+    case "$cmd" in
+        init)
+            case "$prev" in
+                -d|--dir|$overrides) _filedir; return ;;
+            esac
+            COMPREPLY=($(compgen -W "-d --dir $overrides" -- "$cur"))
+            ;;
+        bundle)
+            case "$prev" in
+                -d|--dir|-o|--output|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+                -l|--label|-q|--query|--rules) return ;;
+            esac
+            COMPREPLY=($(compgen -W "-d --dir -l --label -o --output -q --query --clip --rules --no-preamble --no-gitignore $overrides" -- "$cur"))
+            ;;
+        paste)
+            case "$prev" in
+                -d|--dir|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+            esac
+            COMPREPLY=($(compgen -W "-d --dir -x --extract --dry-run $overrides" -- "$cur"))
+            ;;
+        extract)
+            case "$prev" in
+                -d|--dir|--contexts-dir|--responses-dir|--rules-dir) _filedir; return ;;
+            esac
+            COMPREPLY=($(compgen -W "-d --dir -f --force --dry-run $overrides" -- "$cur"))
+            ;;
+        log)
+            case "$prev" in
+                -d|--dir|$overrides) _filedir; return ;;
+            esac
+            COMPREPLY=($(compgen -W "-d --dir $overrides" -- "$cur"))
+            ;;
+        setup)
+            COMPREPLY=($(compgen -W "-i --install-completions -u --uninstall-completions" -- "$cur"))
+            ;;
+    esac
+}
+
+complete -F _mdfs mdfs

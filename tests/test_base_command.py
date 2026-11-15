@@ -1,11 +1,10 @@
 """Tests for BaseCommand abstract base class."""
 
-import sys
 import tempfile
 import unittest
 from argparse import Namespace
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from mdfs.commands.base import BaseCommand
 
@@ -63,65 +62,6 @@ class TestBaseCommandInitialization(unittest.TestCase):
             
             # Should find the root .mdfs directory
             assert cmd.root == Path(tmpdir).resolve()
-
-
-class TestBaseCommandError(unittest.TestCase):
-    """Tests for BaseCommand.error() method."""
-    
-    def test_error_prints_message_and_exits(self):
-        """BaseCommand.error() prints message and exits."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mdfs_dir = Path(tmpdir) / ".mdfs"
-            mdfs_dir.mkdir()
-            
-            args = Namespace(dir=tmpdir)
-            cmd = ConcreteCommand(args)
-            
-            with patch("sys.exit") as mock_exit:
-                with patch("builtins.print") as mock_print:
-                    cmd.error("test error")
-                    
-                    # Should print error message to stderr
-                    mock_print.assert_called_once()
-                    call_args = mock_print.call_args
-                    assert "test error" in call_args[0][0]
-                    assert call_args[1]["file"] == sys.stderr
-                    
-                    # Should exit with code 1
-                    mock_exit.assert_called_once_with(1)
-    
-    def test_error_with_custom_exit_code(self):
-        """BaseCommand.error() respects custom exit code."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mdfs_dir = Path(tmpdir) / ".mdfs"
-            mdfs_dir.mkdir()
-            
-            args = Namespace(dir=tmpdir)
-            cmd = ConcreteCommand(args)
-            
-            with patch("sys.exit") as mock_exit:
-                with patch("builtins.print"):
-                    cmd.error("test error", exit_code=42)
-                    
-                    # Should exit with custom code
-                    mock_exit.assert_called_once_with(42)
-    
-    def test_error_message_format(self):
-        """BaseCommand.error() formats message correctly."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mdfs_dir = Path(tmpdir) / ".mdfs"
-            mdfs_dir.mkdir()
-            
-            args = Namespace(dir=tmpdir)
-            cmd = ConcreteCommand(args)
-            
-            with patch("sys.exit"):
-                with patch("builtins.print") as mock_print:
-                    cmd.error("critical issue")
-                    
-                    call_args = mock_print.call_args[0][0]
-                    assert "Error:" in call_args
-                    assert "critical issue" in call_args
 
 
 class TestBaseCommandAbstract(unittest.TestCase):

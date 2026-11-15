@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from abc import ABC, abstractmethod
 from argparse import Namespace
 from pathlib import Path
@@ -34,16 +33,6 @@ class BaseCommand(ABC):
             Exit code (0 for success, non-zero for failure)
         """
         pass
-
-    def error(self, message: str, exit_code: int = 1) -> None:
-        """Print an error message and exit.
-        
-        Args:
-            message: Error message to display
-            exit_code: Exit code (default: 1)
-        """
-        print(f"Error: {message}", file=sys.stderr)
-        sys.exit(exit_code)
 
     def apply_config_overrides(self, config: Config) -> None:
         """Apply command-line config overrides to the configuration.

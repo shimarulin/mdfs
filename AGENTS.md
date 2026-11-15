@@ -31,7 +31,7 @@ This document serves as the architectural reference and maintenance guide for th
 - Extract files from LLM responses back to disk
 - Fuzzy patch application for LLM-generated diffs
 - Clipboard integration
-- Shell completions (zsh, bash)
+- Shell completions (zsh, bash, fish)
 - Chronological history with timestamps
 
 ---
@@ -47,9 +47,15 @@ mdfs/
 ├── config.py                # Configuration management (NEW)
 ├── data/                    # Packaged rule file 00-file-output-format.md
 │   └── 00-file-output-format.md   # single source of the built-in rule
+├── completions/             # Packaged shell completion scripts (used by setup)
+│   ├── bash/mdfs            # Bash completion script
+│   ├── zsh/_mdfs            # Zsh completion script
+│   └── fish/mdfs.fish       # Fish completion script
+├── shell_setup.py           # Shell detection and config block management
 ├── utils.py                 # Utility functions (clipboard, validation, etc.)
 ├── commands/                # Command implementations
 │   ├── __init__.py
+│   ├── base.py             # BaseCommand abstract base class
 │   ├── init.py             # Initialize .mdfs directory
 │   ├── bundle.py           # Bundle files into context
 │   ├── paste.py            # Save and extract from clipboard
@@ -62,15 +68,12 @@ mdfs/
     ├── rules.py            # Rules loading (.mdfs/rules/, filename globs)
     ├── extractor.py        # File extraction and patching logic
     ├── parser.py           # Markdown marker parsing
+    ├── patcher.py          # Patch application logic
     └── gitignore.py        # .gitignore handling
 
 tests/                      # Test suite
 ├── test_*.py              # Unit and integration tests
 └── (uses pytest)
-
-completions/               # Shell completions
-├── bash/mdfs              # Bash completion script
-└── zsh/_mdfs              # Zsh completion script
 ```
 
 ### Component Relationships
@@ -122,7 +125,10 @@ class CommandNameCommand:
 **Purpose**: Create `.mdfsrc.yaml` configuration file
 
 **Parameters**:
-- `-d, --dir` (optional): Project directory (default: current)
+- `-d, --dir` (optional, global flag): Project directory (default: current) — accepted before and after the subcommand (`mdfs -d X init` and `mdfs init -d X`)
+- `--contexts-dir` (optional, global flag): Override contexts directory (saved to `.mdfsrc.yaml`)
+- `--responses-dir` (optional, global flag): Override responses directory (saved to `.mdfsrc.yaml`)
+- `--rules-dir` (optional, global flag): Override rules directory (saved to `.mdfsrc.yaml`)
 
 **Creates**:
 ```
@@ -132,6 +138,7 @@ class CommandNameCommand:
 **Notes**:
 - Creates `.mdfsrc.yaml` configuration file
 - Writes the file output format rule (`00-file-output-format.md`) into the rules directory (skipped if it already exists)
+- Directory override flags (`--contexts-dir`, `--responses-dir`, `--rules-dir`) are persisted back to `.mdfsrc.yaml` while preserving existing comments and structure
 - Other directories are created automatically by `bundle`, `paste`, and other commands as needed
 - Users can customize directory paths in `.mdfsrc.yaml` before using other commands
 - Safe to run multiple times (idempotent)
@@ -180,8 +187,8 @@ class CommandNameCommand:
 **Output**: `.mdfs/responses/<timestamp>__<label>.md`
 
 **Process**:
-1. Reads from system clipboard
-2. Saves to responses directory with timestamp
+1. Reads from system clipboard (empty clipboard: prints an error and returns exit code `1`)
+2. Saves to responses directory with timestamp (with `--dry-run`: only reports what would be written, saves nothing)
 3. If `--extract`: invokes extraction and patching
 
 ---
@@ -212,7 +219,7 @@ class CommandNameCommand:
 **Purpose**: Display chronological history of contexts and responses
 
 **Parameters**:
-- `-d` (optional): Project directory (default: current)
+- `-d, --dir` (optional, global flag): Project directory (default: current) — accepted before and after the subcommand
 
 **Output**: Timestamped list of bundles and responses
 
@@ -323,17 +330,22 @@ rules directory the built-in packaged copy is used (prepended first).
 
 ### Command-line Config Overrides
 
-All commands support global flags to override configuration values (take precedence over `.mdfsrc.yaml`):
+All commands except `setup` support global flags to override configuration values (take precedence over `.mdfsrc.yaml`):
 
+- `-d, --dir PATH` — Project directory (default: current)
 - `--contexts-dir PATH` — Override contexts directory
 - `--responses-dir PATH` — Override responses directory
 - `--rules-dir PATH` — Override rules directory
+
+All four are accepted both before and after the subcommand (`mdfs -d X log`
+and `mdfs log -d X` both work) via a shared argparse parent parser.
 
 **Example usage:**
 ```bash
 mdfs bundle src/ --contexts-dir ./my-contexts
 mdfs paste label --responses-dir ./my-responses -x
 mdfs log --contexts-dir ./my-contexts
+mdfs log -d /path/to/project
 ```
 
 Overrides are applied in `BaseCommand.apply_config_overrides()` method, which is called by commands after loading configuration.
@@ -542,8 +554,9 @@ AGENTS.md **must be updated** whenever any of the following occur:
 - **Removing** a command: Remove from Commands Reference and __main__.py
 
 **Also update**:
-- `completions/bash/mdfs` — Add command and its flags
-- `completions/zsh/_mdfs` — Add command and its flags with descriptions
+- `mdfs/completions/bash/mdfs` — Add command and its flags
+- `mdfs/completions/zsh/_mdfs` — Add command and its flags with descriptions
+- `mdfs/completions/fish/mdfs.fish` — Add command and its flags with descriptions
 - `README.md` — Document command for users
 
 #### 2. Function & Configuration Changes
@@ -551,7 +564,7 @@ AGENTS.md **must be updated** whenever any of the following occur:
 - **Modifying** function signature: Update parameters and behavior
 - **Removing** a function: Remove from Utility Functions section
 - **Adding** configuration options: Update Configuration System section in AGENTS.md and README.md
-- **Adding** global command-line flags: Update all commands in `completions/bash/mdfs` and `completions/zsh/_mdfs`
+- **Adding** global command-line flags: Update all commands in `mdfs/completions/bash/mdfs`, `mdfs/completions/zsh/_mdfs`, and `mdfs/completions/fish/mdfs.fish`
 
 #### 3. Architecture Changes
 - **Adding** new module: Update Architecture section
@@ -564,8 +577,9 @@ AGENTS.md **must be updated** whenever any of the following occur:
 - ✅ Add/update tests
 - ✅ Update README if user-facing
 - ✅ Update shell completions if command added/modified:
-  - `completions/bash/mdfs` — Bash completion script
-  - `completions/zsh/_mdfs` — Zsh completion script
+  - `mdfs/completions/bash/mdfs` — Bash completion script
+  - `mdfs/completions/zsh/_mdfs` — Zsh completion script
+  - `mdfs/completions/fish/mdfs.fish` — Fish completion script
 
 ### Maintenance Checklist
 
@@ -586,16 +600,16 @@ Before committing changes:
 2. Register in `mdfs/__main__.py` (add to parser and commands dict)
 3. Update `mdfs/commands/__init__.py` to export class
 4. Add to AGENTS.md Commands Reference section
-5. Add command and flags to `completions/bash/mdfs`
-6. Add command and flags to `completions/zsh/_mdfs` with descriptions
+5. Add command and flags to `mdfs/completions/bash/mdfs`
+6. Add command and flags to `mdfs/completions/zsh/_mdfs` and `mdfs/completions/fish/mdfs.fish` with descriptions
 7. Update README.md with command documentation
 8. Add tests in `tests/test_newcommand.py`
 
 **Modifying existing command**:
 1. Edit `mdfs/commands/commandname.py`
 2. Update AGENTS.md Commands Reference section
-3. Update `completions/bash/mdfs` if parameters changed (add new flags)
-4. Update `completions/zsh/_mdfs` if parameters changed (add new flags with descriptions)
+3. Update `mdfs/completions/bash/mdfs` if parameters changed (add new flags)
+4. Update `mdfs/completions/zsh/_mdfs` and `mdfs/completions/fish/mdfs.fish` if parameters changed (add new flags with descriptions)
 5. Update README.md if user-facing changes
 6. Update/add tests in `tests/test_<command>.py`
 
@@ -603,8 +617,8 @@ Before committing changes:
 1. Add flag definition in `mdfs/__main__.py` parser
 2. Document in AGENTS.md Configuration System section
 3. Add to all relevant command classes in `mdfs/commands/`
-4. Update all commands in `completions/bash/mdfs` to include new global flags
-5. Update all commands in `completions/zsh/_mdfs` to include new global flags with descriptions
+4. Update all commands in `mdfs/completions/bash/mdfs` to include new global flags
+5. Update all commands in `mdfs/completions/zsh/_mdfs` and `mdfs/completions/fish/mdfs.fish` to include new global flags with descriptions
 6. Document in README.md Configuration section
 7. Add tests for new override functionality
 
@@ -690,6 +704,6 @@ Used in:
 
 ---
 
-**Last Updated**: 2026-11-07
+**Last Updated**: 2026-11-12
 
 **Document Status**: Living document. Update whenever making changes to commands, functions, or architecture.

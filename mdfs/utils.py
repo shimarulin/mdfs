@@ -184,26 +184,6 @@ def find_mdfs_root(start: str | Path | None = None) -> Path:
         current = parent
 
 
-def mdfs_dir(root: Path) -> Path:
-    """Get the .mdfs directory path."""
-    return root / ".mdfs"
-
-
-def rules_dir(root: Path) -> Path:
-    """Get the rules directory path (.mdfs/rules)."""
-    return mdfs_dir(root) / "rules"
-
-
-def contexts_dir(root: Path) -> Path:
-    """Get the contexts directory path (.mdfs/contexts)."""
-    return mdfs_dir(root) / "contexts"
-
-
-def responses_dir(root: Path) -> Path:
-    """Get the responses directory path (.mdfs/responses)."""
-    return mdfs_dir(root) / "responses"
-
-
 def print_actions(actions: list) -> None:
     """Print extraction actions in a formatted way.
     
